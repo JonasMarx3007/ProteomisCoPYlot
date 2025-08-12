@@ -4,8 +4,8 @@ import os
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import gaussian_kde
-
+from matplotlib.patches import Patch
+from sklearn.decomposition import PCA
 
 def rename_cols(df):
     rename_map = {
@@ -341,4 +341,124 @@ def boxplot_int(data, meta, outliers=False, header=True, legend=True, plot_color
             ax.get_legend().remove()
 
     plt.tight_layout(rect=[0, 0, 0.85, 1])
+    return fig
+
+
+def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=None,
+             width_cm=20, height_cm=10, dpi=100):
+    conditions = meta['condition'].unique()
+    valid_conditions = []
+    cv_data = []
+
+    for cond in conditions:
+        cols = meta.loc[meta['condition'] == cond, 'sample'].tolist()
+        if len(cols) >= 2:
+            subset = data[cols]
+            means = subset.mean(axis=1, skipna=True)
+            sds = subset.std(axis=1, skipna=True)
+            cv = (sds / means) * 100
+            cv = cv[np.isfinite(cv)]
+            if len(cv) > 0:
+                valid_conditions.append(cond)
+                cv_data.append(cv)
+
+    n_conditions = len(valid_conditions)
+
+    if plot_colors is not None:
+        if len(plot_colors) < n_conditions:
+            plot_colors = (plot_colors * (n_conditions // len(plot_colors) + 1))[:n_conditions]
+    else:
+        base_colors = plt.cm.tab10.colors
+        if n_conditions > len(base_colors):
+            base_colors = plt.cm.get_cmap('tab20').colors
+        plot_colors = base_colors[:n_conditions]
+
+    fig, ax = plt.subplots(figsize=(width_cm / 2.54, height_cm / 2.54), dpi=dpi)
+
+    boxprops = dict(linewidth=1.5, color='black')
+    whiskerprops = dict(linewidth=1.5, color='black')
+    capprops = dict(linewidth=1.5, color='black')
+    medianprops = dict(linewidth=2.5, color='firebrick')
+    flierprops = dict(marker='o', markerfacecolor='red', markersize=5, linestyle='none') if outliers else dict(marker='')
+
+    positions = np.arange(1, n_conditions + 1)
+
+    bplot = ax.boxplot(
+        cv_data,
+        patch_artist=True,
+        showfliers=outliers,
+        boxprops=boxprops,
+        whiskerprops=whiskerprops,
+        capprops=capprops,
+        medianprops=medianprops,
+        flierprops=flierprops,
+        positions=positions
+    )
+
+    for patch, color in zip(bplot['boxes'], plot_colors):
+        patch.set_facecolor(color)
+
+    ax.set_xticks(positions)
+    ax.set_xticklabels(valid_conditions)
+    ax.set_xlabel("Condition")
+    ax.set_ylabel("Coefficient of Variation (%)")
+
+    if header:
+        ax.set_title("Coefficient of Variation")
+
+    if legend:
+        from matplotlib.patches import Patch
+        legend_handles = [Patch(facecolor=plot_colors[i], edgecolor='black', label=cond) for i, cond in enumerate(valid_conditions)]
+        ax.legend(handles=legend_handles, title="Condition")
+    else:
+        if ax.get_legend() is not None:
+            ax.get_legend().remove()
+
+    plt.tight_layout()
+    return fig
+
+
+def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, height_cm=10, dpi=100):
+    meta['condition'] = pd.Categorical(meta['condition'], categories=meta['condition'].unique(), ordered=True)
+    annotated_columns = meta['sample'].tolist()
+    data_filtered = data[annotated_columns].dropna()
+
+    transposed_expr = data_filtered.T
+    zero_variance_columns = transposed_expr.var(axis=0) == 0
+    transposed_expr = transposed_expr.loc[:, ~zero_variance_columns]
+
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(transposed_expr)
+    explained_variance = pca.explained_variance_ratio_ * 100
+
+    pca_scores = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+    pca_scores['sample'] = transposed_expr.index
+    pca_scores = pca_scores.merge(meta, on='sample')
+    pca_scores['condition'] = pd.Categorical(pca_scores['condition'], categories=meta['condition'].unique(), ordered=True)
+
+    figsize = (width_cm / 2.54, height_cm / 2.54)
+    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    colors = plt.cm.tab10.colors
+    conditions = pca_scores['condition'].unique()
+    color_map = {cond: colors[i % len(colors)] for i, cond in enumerate(conditions)}
+
+    for cond in conditions:
+        subset = pca_scores[pca_scores['condition'] == cond]
+        ax.scatter(subset['PC1'], subset['PC2'], label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
+
+    ax.set_xlabel(f"Principal Component 1 - {explained_variance[0]:.2f}% variance")
+    ax.set_ylabel(f"Principal Component 2 - {explained_variance[1]:.2f}% variance")
+
+    if header:
+        ax.set_title("PCA Plot")
+
+    if legend:
+        ax.legend(title="Condition", bbox_to_anchor=(1.05, 1), loc='upper left')
+    else:
+        legend_obj = ax.get_legend()
+        if legend_obj is not None:
+            legend_obj.remove()
+
+    plt.tight_layout()
     return fig

@@ -169,6 +169,8 @@ def boxplot_intensity_ui():
         width_cm = st.number_input("Width (cm):", value=20)
         height_cm = st.number_input("Height (cm):", value=10)
         dpi = st.number_input("DPI:", value=300)
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"])
+        st.download_button("Download Plot", data=b"", file_name=f"boxplot_intensity.{file_format}")
 
         st.markdown("---")
         position = st.selectbox("Position:", ["Above", "Below"])
@@ -176,9 +178,6 @@ def boxplot_intensity_ui():
         st.button("Add")
         st.button("Delete")
 
-        st.markdown("---")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"])
-        st.download_button("Download Plot", data=b"", file_name=f"boxplot_intensity.{file_format}")
 
     with col2:
         if "log2_data" in st.session_state and "meta" in st.session_state:
@@ -203,49 +202,92 @@ def boxplot_intensity_ui():
 
 def cov_plot_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
-        st.button("Toggle Outliers", key="toggle_outliersCO")
-        st.button("Mean/Single", key="toggle_meanCO")
-        st.button("Toggle ID", key="toggle_id7")
-        st.button("Toggle Header", key="toggle_header7")
-        st.button("Toggle Legend", key="toggle_legend7")
+        outliers = st.checkbox("Show Outliers", value=False, key="toggle_outliersCO")
+        header = st.checkbox("Show Header", value=True, key="toggle_header7")
+        legend = st.checkbox("Show Legend", value=True, key="toggle_legend7")
+
         st.markdown("---")
         st.selectbox("Level:", ["Protein", "Phosphosite"], key="level7")
+
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="plotWidth7")
-        st.number_input("Height (cm):", value=10, key="plotHeight7")
-        st.number_input("DPI:", value=300, key="plotDPI7")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat7")
-        st.download_button("Download Plot", data="", file_name="cov_plot.png", key="downloadCovPlot")
+        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth7")
+        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight7")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI7")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat7")
+
+        st.download_button(
+            "Download Plot",
+            data=b"",
+            file_name=f"cov_plot.{file_format}",
+            key="downloadCovPlot"
+        )
+
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="textPosition7")
         st.text_area("Annotation Text:", key="text7")
         st.button("Add", key="addText7")
         st.button("Delete", key="deleteText7")
+
     with col2:
-        st.subheader("Covariance Plot")
-        st.empty()
+        if "org_data" in st.session_state and "meta" in st.session_state:
+            try:
+                fig = cov_plot(
+                    data=st.session_state["org_data"],
+                    meta=st.session_state["meta"],
+                    outliers=outliers,
+                    header=header,
+                    legend=legend,
+                    width_cm=width_cm,
+                    height_cm=height_cm,
+                    dpi=dpi
+                )
+                st.pyplot(fig)
+                plt.close(fig)
+            except Exception as e:
+                st.error(f"Error generating Coefficient of Variation plot: {e}")
+        else:
+            st.info("Please load 'log2_data' and 'meta' in session state.")
 
 
 def principal_component_analysis_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
-        st.button("Toggle Legend", key="toggle_legend8")
+        legend = st.checkbox("Show Legend", value=True, key="toggle_legend8")
+        header = st.checkbox("Show Header", value=True, key="toggle_header8")
         st.markdown("---")
         st.selectbox("Level:", ["Protein", "Phosphosite"], key="level8")
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="plotWidth8")
-        st.number_input("Height (cm):", value=10, key="plotHeight8")
-        st.number_input("DPI:", value=300, key="plotDPI8")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat8")
-        st.download_button("Download Plot", data="", file_name="pca_plot.png", key="downloadPCAPlot")
+        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth8")
+        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight8")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI8")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat8")
+        st.download_button("Download Plot", data="", file_name=f"pca_plot.{file_format}", key="downloadPCAPlot")
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="textPosition8")
         st.text_area("Annotation Text:", key="text8")
         st.button("Add", key="addText8")
         st.button("Delete", key="deleteText8")
+
     with col2:
-        st.subheader("PCA Plot")
-        st.empty()
+        if "org_data" in st.session_state and "meta" in st.session_state:
+            try:
+                fig = pca_plot(
+                    data=st.session_state["org_data"],
+                    meta=st.session_state["meta"],
+                    header=header,
+                    legend=legend,
+                    width_cm=width_cm,
+                    height_cm=height_cm,
+                    dpi=dpi
+                )
+                st.pyplot(fig)
+                plt.close(fig)
+            except Exception as e:
+                st.error(f"Error generating PCA plot: {e}")
+        else:
+            st.info("Please load 'log2_data' and 'meta' in session state.")
