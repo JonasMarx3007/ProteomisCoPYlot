@@ -10,7 +10,9 @@ def qc_pipeline_ui():
         "Histogram Intensity Plot",
         "Boxplot Intensity Plot",
         "Cov Plot",
-        "Principal Component Analysis"
+        "Principal Component Analysis",
+        "Abundance Plot",
+        "Correlation Plot"
     ])
 
     with qc_tabs[0]:
@@ -25,6 +27,10 @@ def qc_pipeline_ui():
         cov_plot_ui()
     with qc_tabs[5]:
         principal_component_analysis_ui()
+    with qc_tabs[6]:
+        abundance_plot_ui()
+    with qc_tabs[7]:
+        correlation_plot_ui()
 
 
 #SUB
@@ -291,3 +297,63 @@ def principal_component_analysis_ui():
                 st.error(f"Error generating PCA plot: {e}")
         else:
             st.info("Please load 'log2_data' and 'meta' in session state.")
+
+
+def abundance_plot_ui():
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level9")
+        st.markdown("---")
+        st.header("Plot Size & Download")
+        plot_width = st.number_input("Width (cm):", value=20, key="plotWidth9")
+        plot_height = st.number_input("Height (cm):", value=10, key="plotHeight9")
+        plot_dpi = st.number_input("DPI:", value=300, key="plotDPI9")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat9")
+        st.download_button("Download Plot", data=b"", file_name=f"abundance_plot.{file_format}", key="downloadAbPlot9")
+        st.markdown("---")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition9")
+        st.text_area("Enter text:", key="text9", height=150)
+        st.button("Add", key="addText9")
+        st.button("Delete", key="deleteText9")
+
+    with col2:
+        condition = st.selectbox("Choose Condition:", ["All Conditions"], key="condition9")
+        protein_choices = st.session_state.get("protein_choices", [])
+        selected_proteins = st.multiselect("Select Proteins:", options=protein_choices, key="protein9")
+
+    st.markdown("---")
+
+    plot_placeholder = st.empty()
+
+
+import streamlit as st
+
+def correlation_plot_ui():
+    col1, col2 = st.columns([1, 2])
+
+    with col1:
+        if st.button("Change Display", key="Change12"):
+            st.session_state["change_display12"] = not st.session_state.get("change_display12", False)
+        if st.button("Toggle ID", key="toggle_id12"):
+            st.session_state["toggle_id12"] = not st.session_state.get("toggle_id12", False)
+
+        st.markdown("---")
+
+        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level12")
+
+        st.markdown("---")
+
+        text_position = st.selectbox(
+            "Position:", options={"Above": "up", "Below": "down"}, index=0, key="textPosition12"
+        )
+        annotation_text = st.text_area(
+            "Annotation Text:", value="", height=100, key="text12"
+        )
+
+        st.button("Add", key="addText12")
+        st.button("Delete", key="deleteText12")
+
+    with col2:
+        st.header("Correlation Plot (Pearson)")
+        plot_placeholder = st.empty()
