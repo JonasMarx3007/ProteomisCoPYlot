@@ -29,6 +29,9 @@ a = Analysis(
     datas=datas,
     hiddenimports=[
         'streamlit.runtime.scriptrunner.magic_funcs',
+        'matplotlib',
+        'matplotlib.backends.backend_tkagg',
+        'matplotlib.backends.backend_agg'
     ],
     hookspath=[],
     hooksconfig={},
