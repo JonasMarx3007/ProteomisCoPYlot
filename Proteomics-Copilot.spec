@@ -27,11 +27,17 @@ a = Analysis(
     pathex=[project_dir],
     binaries=[],
     datas=datas,
-    hiddenimports=[
-        'streamlit.runtime.scriptrunner.magic_funcs',
-        'matplotlib',
-        'matplotlib.backends.backend_tkagg',
-        'matplotlib.backends.backend_agg'
+    hiddenimports = [
+    'streamlit.runtime.scriptrunner.magic_funcs',
+    'matplotlib',
+    'matplotlib.backends.backend_tkagg',
+    'matplotlib.backends.backend_agg',
+    'scipy',
+    'scipy.spatial',
+    'scipy.sparse',
+    'scipy.linalg',
+    'scipy.optimize',
+    'scipy.stats'
     ],
     hookspath=[],
     hooksconfig={},
