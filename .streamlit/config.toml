@@ -1,0 +1,9 @@
+[server]
+maxUploadSize = 10240
+headless = true
+
+[theme]
+primaryColor = "#F39C12"
+
+[browser]
+favicon = "favicon.ico"
