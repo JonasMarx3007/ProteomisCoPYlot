@@ -37,7 +37,10 @@ a = Analysis(
     'scipy.sparse',
     'scipy.linalg',
     'scipy.optimize',
-    'scipy.stats'
+    'scipy.stats',
+    'sklearn',
+    'sklearn.decomposition',
+    'sklearn.utils._cython_blas',
     ],
     hookspath=[],
     hooksconfig={},
