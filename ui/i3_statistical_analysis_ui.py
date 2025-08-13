@@ -113,47 +113,75 @@ def volcano_plot_ui():
 def gsea_ui():
     st.header("GSEA")
 
+    if "log2_data" not in st.session_state or "meta" not in st.session_state:
+        st.warning("Please load data and generate a volcano plot first.")
+        return
+
     col1, col2 = st.columns([1, 2])
 
     with col1:
         top_n = st.number_input("Number of top gene sets to show:", min_value=1, value=10, step=1, key="top_n11")
-
         st.markdown("---")
-
         st.subheader("Term Size Filter")
-        min_term = st.number_input("Min term size:", value=20, key="filter11min")
-        max_term = st.number_input("Max term size:", value=300, key="filter11max")
-
+        min_term = st.number_input("Min term size:", value=20, key="min_term11")
+        max_term = st.number_input("Max term size:", value=300, key="max_term11")
         st.markdown("---")
-
         st.subheader("Plot Size & Resolution")
-        plot_width = st.number_input("Width (cm):", value=20, key="plotWidth11")
-        plot_height = st.number_input("Height (cm):", value=10, key="plotHeight11")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI11")
-
+        plot_width = st.number_input("Width (cm):", value=20, key="plot_width11")
+        plot_height = st.number_input("Height (cm):", value=10, key="plot_height11")
+        dpi = st.number_input("DPI:", value=300, key="dpi11")
         st.markdown("---")
-
-        st.download_button("Download Plot (UP)", data=b"", key="downloadUpPlot")
-        st.download_button("Download Plot (DOWN)", data=b"", key="downloadDownPlot")
+        st.download_button("Download Plot (UP)", data=b"", key="downloadUpPlot11")
+        st.download_button("Download Plot (DOWN)", data=b"", key="downloadDownPlot11")
 
     with col2:
         st.subheader("Upregulated Gene Sets")
-        st.empty()
-
+        up_genes_placeholder = st.empty()
         st.markdown("---")
-
         st.subheader("Downregulated Gene Sets")
-        st.empty()
-
+        down_genes_placeholder = st.empty()
         st.markdown("---")
-
         list_col1, list_col2 = st.columns(2)
         with list_col1:
             st.subheader("Upregulated Gene List")
-            st.empty()
+            up_list_placeholder = st.empty()
         with list_col2:
             st.subheader("Downregulated Gene List")
-            st.empty()
+            down_list_placeholder = st.empty()
+
+    condition1 = st.session_state.get("condition1_10", None)
+    condition2 = st.session_state.get("condition2_10", None)
+    in_pval = st.session_state.get("in_pval10", 0.05)
+    in_log2fc = st.session_state.get("in_log2fc10", 1.0)
+    use_uncorrected = st.session_state.get("uncorrected10", False)  # take from volcano UI
+
+    if condition1 and condition2 and condition1 != condition2:
+        diff_res = different_genes(
+            st.session_state.log2_data,
+            st.session_state.meta,
+            condition1,
+            condition2,
+            in_pval=in_pval,
+            in_log2fc=in_log2fc,
+            workflow="Gene",  # always Gene for GSEA
+            uncorrected=use_uncorrected  # use volcano selection
+        )
+        up_genes = diff_res["Upregulated"]
+        down_genes = diff_res["Downregulated"]
+
+        up_list_placeholder.write(up_genes)
+        down_list_placeholder.write(down_genes)
+
+        if up_genes:
+            up_fig = enrichment_analysis(up_genes, top_n=top_n, min_num=min_term, max_num=max_term)
+            if up_fig:
+                up_genes_placeholder.pyplot(up_fig, dpi=dpi)
+        if down_genes:
+            down_fig = enrichment_analysis(down_genes, top_n=top_n, min_num=min_term, max_num=max_term)
+            if down_fig:
+                down_genes_placeholder.pyplot(down_fig, dpi=dpi)
+    else:
+        st.info("Please select two different conditions in the volcano plot to run GSEA.")
 
 
 def simulation_ui():

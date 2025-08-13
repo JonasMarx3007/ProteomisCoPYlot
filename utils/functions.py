@@ -10,6 +10,7 @@ from scipy.cluster.hierarchy import linkage, leaves_list
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import multipletests
 import plotly.graph_objects as go
+from gprofiler import GProfiler
 
 #BASIC AND DATA FUNCTIONS
 def rename_cols(df):
@@ -415,7 +416,7 @@ def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=N
     if legend:
         from matplotlib.patches import Patch
         legend_handles = [Patch(facecolor=plot_colors[i], edgecolor='black', label=cond) for i, cond in enumerate(valid_conditions)]
-        ax.legend(handles=legend_handles, title="Condition")
+        ax.legend(handles=legend_handles, title="Condition", loc='center left', bbox_to_anchor=(1, 0.5))
     else:
         if ax.get_legend() is not None:
             ax.get_legend().remove()
@@ -726,3 +727,114 @@ def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1
     volcano_df['neg_log10_adj_pval'] = -np.log10(volcano_df['adj_pval'])
 
     return volcano_df
+
+
+gp = GProfiler(return_dataframe=True)
+
+def different_genes(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
+                    workflow="Gene", paired="Unpaired", uncorrected=False):
+    annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
+    annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
+
+    if workflow == "Gene":
+        key_col = 'GeneNames'
+    else:
+        raise ValueError("workflow must be 'Gene' for this function")
+
+    cols_to_use = [key_col] + annotated_columns1 + annotated_columns2
+    data_filtered = data[cols_to_use].copy()
+    threshold = len(annotated_columns1) + len(annotated_columns2) - 2
+    data_filtered = data_filtered[data_filtered.iloc[:, 1:].isna().sum(axis=1) < threshold]
+
+    log2fc_list = []
+    pvals_list = []
+
+    for idx, row in data_filtered.iterrows():
+        values1 = row[annotated_columns1].dropna().astype(float)
+        values2 = row[annotated_columns2].dropna().astype(float)
+
+        if paired == "Unpaired":
+            if len(values1) < 2 or len(values2) < 2:
+                log2fc_list.append(np.nan)
+                pvals_list.append(np.nan)
+                continue
+            log2fc_list.append(values2.mean() - values1.mean())
+            pvals_list.append(ttest_ind(values2, values1, equal_var=True).pvalue)
+
+        elif paired == "Paired":
+            paired_values = pd.concat([values1, values2], axis=1).dropna()
+            if paired_values.shape[0] < 1:
+                log2fc_list.append(np.nan)
+                pvals_list.append(np.nan)
+                continue
+            log2fc_list.append(paired_values.iloc[:, 1].mean() - paired_values.iloc[:, 0].mean())
+            if paired_values.shape[0] < 2:
+                pvals_list.append(np.nan)
+            else:
+                pvals_list.append(ttest_rel(paired_values.iloc[:, 1], paired_values.iloc[:, 0]).pvalue)
+
+    mask = ~np.isnan(pvals_list)
+    log2fc_array = np.array(log2fc_list)[mask]
+    pvals_array = np.array(pvals_list)[mask]
+    data_filtered = data_filtered.iloc[mask, :]
+
+    if uncorrected:
+        adj_pvals = pvals_array
+    else:
+        adj_pvals = multipletests(pvals_array, method='fdr_bh')[1]
+
+    result_data = pd.DataFrame({
+        'Gene': data_filtered[key_col],
+        'log2FC': log2fc_array,
+        'pval': pvals_array,
+        'adj_pval': adj_pvals
+    })
+
+    up_genes = result_data.loc[
+        (result_data['adj_pval'] < in_pval) & (result_data['log2FC'] > in_log2fc), 'Gene'
+    ].apply(lambda x: x.split(";")[0]).tolist()
+
+    down_genes = result_data.loc[
+        (result_data['adj_pval'] < in_pval) & (result_data['log2FC'] < -in_log2fc), 'Gene'
+    ].apply(lambda x: x.split(";")[0]).tolist()
+
+    return {'Upregulated': up_genes, 'Downregulated': down_genes}
+
+
+def enrichment_analysis(gene_list, top_n=10, min_num=20, max_num=300):
+    gene_list = [g for g in gene_list if g]
+    if not gene_list:
+        return None
+
+    res = gp.profile(
+        organism='hsapiens',
+        query=gene_list,
+        sources=['GO:BP', 'GO:CC', 'GO:MF'],
+        user_threshold=0.05,
+        significance_threshold_method='g_SCS'
+    )
+
+    if res.empty:
+        return None
+
+    res = res[(res['term_size'] >= min_num) & (res['term_size'] <= max_num)].copy()
+    res = res.sort_values('p_value').head(top_n)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    scatter = ax.scatter(
+        x=res['intersection_size'] / res['term_size'] * 100,
+        y=res['name'],
+        s=res['intersection_size']*10,
+        c=-np.log10(res['p_value']),
+        cmap='RdBu_r'
+    )
+
+    ax.set_xlabel('Hits (%)')
+    ax.set_ylabel('GO Term')
+    ax.set_title('Gene Set Enrichment Analysis')
+
+    cbar = fig.colorbar(scatter, ax=ax, pad=0.15)
+    cbar.set_label('-log10(p-value)')
+
+    plt.tight_layout()
+    return fig

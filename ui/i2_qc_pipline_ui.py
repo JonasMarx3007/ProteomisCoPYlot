@@ -279,10 +279,10 @@ def principal_component_analysis_ui():
         st.button("Delete", key="deleteText8")
 
     with col2:
-        if "org_data" in st.session_state and "meta" in st.session_state:
+        if "log2_data" in st.session_state and "meta" in st.session_state:
             try:
                 fig = pca_plot(
-                    data=st.session_state["org_data"],
+                    data=st.session_state["log2_data"],
                     meta=st.session_state["meta"],
                     header=header,
                     legend=legend,
@@ -367,23 +367,20 @@ def correlation_plot_ui():
         dpi = st.number_input("Plot DPI", min_value=50, max_value=300, value=100)
 
     with col2:
-        st.header("Correlation Plot (Pearson)")
-
-        np.random.seed(0)
-        data = pd.DataFrame(np.random.rand(6, 6), columns=list("ABCDEF"))
-        meta = pd.DataFrame({
-            'sample': list("ABCDEF"),
-            'condition': ["Cond1", "Cond1", "Cond2", "Cond2", "Cond3", "Cond3"]
-        })
-
-        fig = corr_plot(
-            st.session_state["org_data"],
-            st.session_state["meta"],
-            method=False,
-            id=st.session_state.get("toggle_id12", True),
-            full_range=False,
-            width=width,
-            height=height,
-            dpi=dpi
-        )
-        st.pyplot(fig)
+        if "org_data" in st.session_state and "meta" in st.session_state:
+            try:
+                fig = corr_plot(
+                    st.session_state["org_data"],
+                    st.session_state["meta"],
+                    method=False,
+                    id=st.session_state.get("toggle_id12", True),
+                    full_range=False,
+                    width=width,
+                    height=height,
+                    dpi=dpi
+                )
+                st.pyplot(fig)
+            except Exception as e:
+                st.error(f"Error generating abundance plot: {e}")
+        else:
+            st.info("Please load 'org_data' and 'meta' in session state.")
