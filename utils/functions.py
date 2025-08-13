@@ -462,3 +462,73 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
 
     plt.tight_layout()
     return fig
+
+
+def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20, height_cm=10, dpi=300,
+                   legend=True, header=True):
+    data = data.replace(0, np.nan)
+    unique_conditions = meta['condition'].unique()
+
+    if plot_colors is not None:
+        if len(plot_colors) < len(unique_conditions):
+            reps = int(np.ceil(len(unique_conditions) / len(plot_colors)))
+            plot_colors = (plot_colors * reps)[:len(unique_conditions)]
+    else:
+        plot_colors = plt.cm.get_cmap('tab10').colors[:len(unique_conditions)]
+
+    annotated_columns = meta['sample'].tolist()
+
+    if workflow == "Protein":
+        key_col = "ProteinNames"
+    elif workflow == "Phosphosite":
+        key_col = "PTM_Collapse_key"
+    else:
+        raise ValueError("workflow must be 'Protein' or 'Phosphosite'")
+
+    data_filtered = data[[key_col] + annotated_columns].copy()
+
+    mean_intensities = pd.DataFrame()
+    mean_intensities[key_col] = data_filtered[key_col]
+
+    for condition in unique_conditions:
+        columns = meta.loc[meta['condition'] == condition, 'sample'].tolist()
+        condition_data = data_filtered[[key_col] + columns].copy()
+        means = condition_data[columns].mean(axis=1, skipna=True)
+        means_log = np.log10(means + 1)
+        mean_intensities[condition] = means_log
+
+    if mean_intensities.shape[1] > 2:
+        mean_intensities = mean_intensities[mean_intensities.iloc[:, 1:].isna().sum(axis=1) < mean_intensities.shape[1] - 2]
+    else:
+        mean_intensities = mean_intensities.dropna(subset=[mean_intensities.columns[1]])
+
+    long_intensities = mean_intensities.melt(id_vars=[key_col], var_name="Condition", value_name="log10Intensity")
+    long_intensities['Rank'] = long_intensities.groupby('Condition')['log10Intensity'].rank(ascending=False, method='first')
+    long_intensities['Condition'] = pd.Categorical(long_intensities['Condition'], categories=unique_conditions, ordered=True)
+
+    width_in = width_cm / 2.54
+    height_in = height_cm / 2.54
+
+    fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=dpi)
+
+    for cond, color in zip(unique_conditions, plot_colors):
+        subset = long_intensities[long_intensities['Condition'] == cond]
+        ax.scatter(subset['Rank'], subset['log10Intensity'], label=cond, color=color, s=5)
+
+    ax.set_xlabel(f"{workflow} Rank")
+    ax.set_ylabel(f"log10 {workflow} Intensity")
+
+    if header:
+        ax.set_title("Abundance plot - all conditions")
+    else:
+        ax.set_title("")
+
+    if legend:
+        ax.legend(title="Condition", bbox_to_anchor=(1.05, 1), loc='upper left')
+        fig.tight_layout(rect=[0, 0, 0.85, 1])
+    else:
+        if ax.get_legend() is not None:
+            ax.legend_.remove()
+        fig.tight_layout()
+
+    return fig

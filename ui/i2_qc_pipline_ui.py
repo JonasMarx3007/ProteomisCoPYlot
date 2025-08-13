@@ -303,12 +303,15 @@ def abundance_plot_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
+        legend = st.checkbox("Show Legend", value=True, key="legend9")
+        header = st.checkbox("Show Header", value=True, key="header9")
+        st.markdown("---")
         level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level9")
         st.markdown("---")
-        st.header("Plot Size & Download")
-        plot_width = st.number_input("Width (cm):", value=20, key="plotWidth9")
-        plot_height = st.number_input("Height (cm):", value=10, key="plotHeight9")
-        plot_dpi = st.number_input("DPI:", value=300, key="plotDPI9")
+        st.header("Plot Size & Resolution")
+        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth9")
+        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight9")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI9")
         file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat9")
         st.download_button("Download Plot", data=b"", file_name=f"abundance_plot.{file_format}", key="downloadAbPlot9")
         st.markdown("---")
@@ -322,12 +325,24 @@ def abundance_plot_ui():
         protein_choices = st.session_state.get("protein_choices", [])
         selected_proteins = st.multiselect("Select Proteins:", options=protein_choices, key="protein9")
 
-    st.markdown("---")
+        if "org_data" in st.session_state and "meta" in st.session_state:
+            try:
+                fig = abundance_plot(
+                    data=st.session_state["org_data"],
+                    meta=st.session_state["meta"],
+                    workflow=level,
+                    width_cm=width_cm,
+                    height_cm=height_cm,
+                    dpi=dpi,
+                    legend=legend,
+                    header=header
+                )
+                st.pyplot(fig)
+            except Exception as e:
+                st.error(f"Error generating abundance plot: {e}")
+        else:
+            st.info("Please load 'org_data' and 'meta' in session state.")
 
-    plot_placeholder = st.empty()
-
-
-import streamlit as st
 
 def correlation_plot_ui():
     col1, col2 = st.columns([1, 2])
