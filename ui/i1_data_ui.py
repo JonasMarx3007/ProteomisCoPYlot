@@ -42,7 +42,7 @@ def data_upload_ui():
         st.subheader("Protein Level Data Preview")
         if st.session_state.get("file"):
             st.session_state["data"] = read_data(st.session_state["file"])
-            st.dataframe(st.session_state["data"].head(10))
+            st.dataframe(st.session_state["data"])
         else:
             st.dataframe([], key="table1")
 
@@ -50,7 +50,7 @@ def data_upload_ui():
         st.subheader("Phospho Data Preview")
         if st.session_state.get("file3"):
             st.session_state["data3"] = read_data(st.session_state["file3"])
-            st.dataframe(st.session_state["data3"].head(10))
+            st.dataframe(st.session_state["data3"])
         else:
             st.dataframe([], key="table3")
 
@@ -58,7 +58,7 @@ def data_upload_ui():
         st.subheader("Full Report Preview")
         if st.session_state.get("file2"):
             st.session_state["data2"] = read_data(st.session_state["file2"])
-            st.dataframe(st.session_state["data2"].head(10))
+            st.dataframe(st.session_state["data2"])
         else:
             st.dataframe([], key="table2")
 
