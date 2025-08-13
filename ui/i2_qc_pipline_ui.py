@@ -1,6 +1,5 @@
 import streamlit as st
 from utils.functions import *
-import io
 
 #MAIN
 def qc_pipeline_ui():

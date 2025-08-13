@@ -4,7 +4,6 @@ import os
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 from sklearn.decomposition import PCA
 
 def rename_cols(df):
