@@ -6,11 +6,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from scipy.stats import ttest_ind, ttest_rel
+from scipy.stats import t
 from scipy.cluster.hierarchy import linkage, leaves_list
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import multipletests
 import plotly.graph_objects as go
 from gprofiler import GProfiler
+import plotly.express as px
 
 #BASIC AND DATA FUNCTIONS
 def rename_cols(df):
@@ -837,4 +839,140 @@ def enrichment_analysis(gene_list, top_n=10, min_num=20, max_num=300):
     cbar.set_label('-log10(p-value)')
 
     plt.tight_layout()
+    return fig
+
+
+def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
+                     workflow="Protein", mod_var=1, mod_n=0):
+    annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
+    annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
+    if workflow == "Protein":
+        label_col = "ProteinNames"
+    elif workflow == "Phosphosite":
+        label_col = "PTM_Collapse_key"
+    else:
+        raise ValueError("workflow must be 'Protein' or 'Phosphosite'")
+    cols_to_use = [label_col] + annotated_columns1 + annotated_columns2
+    data_filtered = data[cols_to_use].copy()
+    threshold = len(annotated_columns1) + len(annotated_columns2) - 2
+    data_filtered = data_filtered[data_filtered.iloc[:, 1:].isna().sum(axis=1) < threshold]
+    log2fc_list, pvals_list = [], []
+    for _, row in data_filtered.iterrows():
+        x = row[annotated_columns1].dropna().astype(float)
+        y = row[annotated_columns2].dropna().astype(float)
+        n1_real, n2_real = len(x), len(y)
+        if n1_real < 2 or n2_real < 2:
+            log2fc_list.append(np.nan)
+            pvals_list.append(np.nan)
+            continue
+        mean1, mean2 = x.mean(), y.mean()
+        var1, var2 = x.var(ddof=1), y.var(ddof=1)
+        n1 = n1_real if mod_n in (0, 1) else mod_n
+        n2 = n2_real if mod_n in (0, 1) else mod_n
+        pooled_var = ((n1_real - 1) * var1 + (n2_real - 1) * var2) / (n1_real + n2_real - 2)
+        pooled_var *= mod_var
+        se = np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+        t_stat = (mean2 - mean1) / se
+        df = n1 + n2 - 2
+        pval = 2 * t.sf(np.abs(t_stat), df)
+        log2fc_list.append(mean2 - mean1)
+        pvals_list.append(pval)
+    mask = ~np.isnan(pvals_list)
+    log2fc_array = np.array(log2fc_list)[mask]
+    pvals_array = np.array(pvals_list)[mask]
+    data_filtered = data_filtered.loc[mask]
+    adj_pvals = multipletests(pvals_array, method='fdr_bh')[1]
+    volcano_data = pd.DataFrame({
+        'Feature': data_filtered[label_col],
+        'log2FC': log2fc_array,
+        'pval': pvals_array,
+        'adj_pval': adj_pvals
+    })
+    volcano_data['significance'] = np.where(
+        (volcano_data['adj_pval'] < in_pval) & (volcano_data['log2FC'] > in_log2fc), "Upregulated",
+        np.where((volcano_data['adj_pval'] < in_pval) & (volcano_data['log2FC'] < -in_log2fc), "Downregulated",
+                 "Not significant")
+    )
+    volcano_data['neg_log10_pval'] = -np.log10(volcano_data['adj_pval'])
+    color_mapping = {"Downregulated": "blue", "Not significant": "gray", "Upregulated": "red"}
+    fig = px.scatter(
+        volcano_data,
+        x='log2FC',
+        y='neg_log10_pval',
+        color='significance',
+        hover_data=['Feature'],
+        color_discrete_map=color_mapping,
+        title=f"{condition1} vs. {condition2}",
+    )
+    vline_height = max(volcano_data['neg_log10_pval'].max(), -np.log10(in_pval))
+    fig.add_shape(type="line", x0=in_log2fc, x1=in_log2fc, y0=0, y1=vline_height,
+                  line=dict(dash='dash', color='black'))
+    fig.add_shape(type="line", x0=-in_log2fc, x1=-in_log2fc, y0=0, y1=vline_height,
+                  line=dict(dash='dash', color='black'))
+    fig.add_shape(type="line", x0=volcano_data['log2FC'].min(), x1=volcano_data['log2FC'].max(),
+                  y0=-np.log10(in_pval), y1=-np.log10(in_pval),
+                  line=dict(dash='dash', color='black'))
+    fig.update_layout(
+        xaxis_title=f"log2 fold change ({condition2} - {condition1})",
+        yaxis_title="-log10 adj. p-value",
+        hovermode='closest'
+    )
+    return fig
+
+
+#SINGLE PROTEIN
+def boxplot_int_single(data, meta, outliers=False, id=True, header=True, legend=True, color_package=True, plot_colors=None):
+    if plot_colors is not None:
+        if len(plot_colors) < meta['condition'].nunique():
+            times_to_repeat = -(-meta['condition'].nunique() // len(plot_colors))  # Ceiling division
+            plot_colors = (plot_colors * times_to_repeat)[:meta['condition'].nunique()]
+
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+
+    if id:
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta.apply(lambda x: f"{x['condition']}_{x['new_sample']}\n ({x['id']})", axis=1)
+    else:
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta.apply(lambda x: f"{x['condition']}_{x['new_sample']}", axis=1)
+
+    rename_map = dict(zip(meta['sample'], meta['new_sample']))
+    data = data.rename(columns=rename_map)
+
+    annotated_columns = meta['new_sample'].tolist()
+    data_filtered = data[annotated_columns]
+
+    intensities_list = []
+    for condition in meta['condition'].unique():
+        cols = meta.loc[meta['condition'] == condition, 'new_sample']
+        for col in cols:
+            intensity = data_filtered[col].mean(skipna=True)
+            if pd.notna(intensity):
+                intensities_list.append({'sample': col, 'intensity': intensity, 'condition': condition})
+
+    intensities = pd.DataFrame(intensities_list)
+    intensities['sample'] = pd.Categorical(intensities['sample'], categories=meta['new_sample'], ordered=True)
+
+    fig = px.box(
+        intensities,
+        x="sample",
+        y="intensity",
+        color="condition" if legend else None,
+        points="all" if outliers else False,
+        color_discrete_sequence=plot_colors if plot_colors is not None else px.colors.qualitative.Plotly
+    )
+
+    if header:
+        fig.update_layout(title="Measured protein intensity values (log2)")
+    fig.update_layout(
+        xaxis_title="Sample",
+        yaxis_title="log2 Intensity",
+        legend_title="Condition" if legend else None
+    )
+
+    if not legend:
+        fig.update_layout(showlegend=False)
+
+    fig.update_xaxes(tickangle=45)
+
     return fig

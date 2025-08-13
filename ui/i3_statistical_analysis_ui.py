@@ -163,8 +163,7 @@ def gsea_ui():
             condition2,
             in_pval=in_pval,
             in_log2fc=in_log2fc,
-            workflow="Gene",  # always Gene for GSEA
-            uncorrected=use_uncorrected  # use volcano selection
+            uncorrected=use_uncorrected
         )
         up_genes = diff_res["Upregulated"]
         down_genes = diff_res["Downregulated"]
@@ -200,15 +199,39 @@ def simulation_ui():
 
         st.markdown("---")
 
-        st.slider("Variance multiplier:", min_value=0.25, max_value=4.0, value=1.0, step=0.05, key="mod_var10.5")
-        st.slider("Sample size override (n):", min_value=1, max_value=20, value=1, step=1, key="mod_n10.5")
+        mod_var = st.slider("Variance multiplier:", min_value=0.25, max_value=4.0, value=1.0, step=0.05, key="mod_var10.5")
+        mod_n = st.slider("Sample size override (n):", min_value=1, max_value=20, value=1, step=1, key="mod_n10.5")
 
     with col2:
         st.subheader("Conditions")
-        condition1 = st.selectbox("Condition 1:", options=[], key="condition1_10.5")
-        condition2 = st.selectbox("Condition 2:", options=[], key="condition2_10.5")
+
+        conditions_list = []
+        if "meta" in st.session_state and not st.session_state.meta.empty:
+            meta_df = st.session_state.meta
+            counts = meta_df['condition'].value_counts()
+            conditions_list = sorted(counts[counts >= 2].index.tolist())
+
+        condition1 = st.selectbox("Condition 1:", options=conditions_list, key="condition1_10.5")
+        condition2 = st.selectbox("Condition 2:", options=[c for c in conditions_list if c != condition1], key="condition2_10.5")
 
         st.markdown("---")
 
         st.subheader("Simulation Volcano Plot")
-        st.empty()
+        if "log2_data" in st.session_state and "meta" in st.session_state:
+            if condition1 and condition2:
+                fig = volcano_plot_sim(
+                    data=st.session_state["log2_data"],
+                    meta=st.session_state["meta"],
+                    condition1=condition1,
+                    condition2=condition2,
+                    in_pval=pval_threshold,
+                    in_log2fc=log2fc_threshold,
+                    workflow=level,
+                    mod_var=mod_var,
+                    mod_n=mod_n
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Please select two different conditions to generate the volcano plot.")
+        else:
+            st.info("Volcano data will appear here after selecting conditions and generating the plot.")
