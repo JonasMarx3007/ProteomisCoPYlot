@@ -1,4 +1,5 @@
 import streamlit as st
+from utils.functions import *
 
 #MAIN
 def statistical_analysis_ui():
@@ -24,9 +25,9 @@ def volcano_plot_ui():
 
     with col1:
         st.subheader("Thresholds")
-        pval_threshold = st.number_input("P‑value threshold:", value=0.05, step=0.01, key="in_pval10")
-        log2fc_threshold = st.number_input("log₂ FC threshold:", value=1.0, step=0.1, key="in_log2fc10")
-        uncorrected = st.checkbox("Use uncorrected p‑values", value=False, key="uncorrected10")
+        pval_threshold = st.number_input("P-value threshold:", value=0.05, step=0.01, key="in_pval10")
+        log2fc_threshold = st.number_input("log₂ FC threshold:", value=1.0, step=0.1, key="in_log2fc10")
+        uncorrected = st.checkbox("Use uncorrected p-values", value=False, key="uncorrected10")
 
         st.markdown("---")
 
@@ -56,18 +57,57 @@ def volcano_plot_ui():
 
     with col2:
         st.subheader("Conditions")
-        condition1 = st.selectbox("Condition 1:", options=[], key="condition1_10")
-        condition2 = st.selectbox("Condition 2:", options=[], key="condition2_10")
+
+        conditions_list = []
+        if "meta" in st.session_state and not st.session_state.meta.empty:
+            meta_df = st.session_state.meta
+            counts = meta_df['condition'].value_counts()
+            conditions_list = sorted(counts[counts >= 2].index.tolist())
+
+        condition1 = st.selectbox("Condition 1:", options=conditions_list, key="condition1_10")
+        condition2 = st.selectbox("Condition 2:", options=conditions_list, key="condition2_10")
 
         st.markdown("---")
-
         st.subheader("Volcano Plot")
-        st.empty()
+
+        volcano_df = None
+        if "log2_data" in st.session_state and "meta" in st.session_state:
+            if condition1 and condition2 and condition1 != condition2:
+                volcano_df = volcano_data_f(
+                    st.session_state.log2_data,
+                    st.session_state.meta,
+                    condition1=condition1,
+                    condition2=condition2,
+                    in_pval=pval_threshold,
+                    in_log2fc=log2fc_threshold,
+                    workflow=level,
+                    paired=test_type,
+                    uncorrected=uncorrected
+                )
+
+                fig = volcano_plot(
+                    st.session_state.log2_data,
+                    st.session_state.meta,
+                    condition1=condition1,
+                    condition2=condition2,
+                    in_pval=pval_threshold,
+                    in_log2fc=log2fc_threshold,
+                    workflow=level,
+                    paired=test_type,
+                    uncorrected=uncorrected
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Please select two different conditions to generate the volcano plot.")
+        else:
+            st.warning("No data loaded. Please load data first.")
 
         st.markdown("---")
-
-        st.subheader("Data Table")
-        st.empty()
+        st.subheader("Volcano Data Table")
+        if volcano_df is not None:
+            st.dataframe(volcano_df)
+        else:
+            st.info("Volcano data will appear here after selecting conditions and generating the plot.")
 
 
 def gsea_ui():

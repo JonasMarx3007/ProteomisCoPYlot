@@ -5,11 +5,11 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-from scipy import stats
+from scipy.stats import ttest_ind, ttest_rel
 from scipy.cluster.hierarchy import linkage, leaves_list
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import multipletests
-import plotly.express as px
+import plotly.graph_objects as go
 
 #BASIC AND DATA FUNCTIONS
 def rename_cols(df):
@@ -575,99 +575,154 @@ def volcano_plot(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
     annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
     annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
 
+    label_col = "ProteinNames" if workflow == "Protein" else "PTM_Collapse_key"
+    cols_to_use = [label_col] + annotated_columns1 + annotated_columns2
+    data_filtered = data[cols_to_use].copy()
+    data_filtered = data_filtered[data_filtered.iloc[:, 1:].notna().sum(axis=1) >= 2]
+
+    log2fc_list = []
+    pval_list = []
+
+    for _, row in data_filtered.iterrows():
+        vals1 = row[annotated_columns1].astype(float).dropna()
+        vals2 = row[annotated_columns2].astype(float).dropna()
+
+        if paired == "Unpaired":
+            if len(vals1) < 2 or len(vals2) < 2:
+                log2fc_list.append(np.nan)
+                pval_list.append(np.nan)
+                continue
+            log2fc_list.append(vals2.mean() - vals1.mean())
+            pval_list.append(ttest_ind(vals2, vals1, equal_var=True).pvalue)
+        else:  # Paired
+            paired_vals = pd.DataFrame({'v1': vals1, 'v2': vals2}).dropna()
+            if len(paired_vals) < 2:
+                log2fc_list.append(np.nan)
+                pval_list.append(np.nan)
+                continue
+            log2fc_list.append(paired_vals['v2'].mean() - paired_vals['v1'].mean())
+            pval_list.append(ttest_rel(paired_vals['v2'], paired_vals['v1']).pvalue)
+
+    volcano_data = data_filtered.copy()
+    volcano_data['log2FC'] = log2fc_list
+    volcano_data['pval'] = pval_list
+    volcano_data = volcano_data.dropna(subset=['pval'])
+
+    volcano_data['adj_pval'] = (volcano_data['pval'] if uncorrected
+                                else multipletests(volcano_data['pval'], method='fdr_bh')[1])
+    volcano_data['neg_log10_pval'] = -np.log10(volcano_data['adj_pval'])
+    volcano_data['significance'] = np.where(
+        (volcano_data['adj_pval'] < in_pval) & (volcano_data['log2FC'] > in_log2fc), 'Upregulated',
+        np.where((volcano_data['adj_pval'] < in_pval) & (volcano_data['log2FC'] < -in_log2fc), 'Downregulated',
+                 'Not significant')
+    )
+
+    color_mapping = {'Downregulated': 'blue', 'Not significant': 'gray', 'Upregulated': 'red'}
+    y_hline = -np.log10(in_pval)
+    max_y = max(y_hline, volcano_data['neg_log10_pval'].max())
+
+    shapes = [
+        dict(type="line", x0=in_log2fc, x1=in_log2fc, y0=0, y1=max_y, line=dict(color="black", dash="dash")),
+        dict(type="line", x0=-in_log2fc, x1=-in_log2fc, y0=0, y1=max_y, line=dict(color="black", dash="dash")),
+        dict(type="line", x0=volcano_data['log2FC'].min(), x1=volcano_data['log2FC'].max(), y0=y_hline, y1=y_hline,
+             line=dict(color="black", dash="dash"))
+    ]
+
+    fig = go.Figure()
+    for sig in color_mapping:
+        subset = volcano_data[volcano_data['significance'] == sig]
+        fig.add_trace(go.Scatter(
+            x=subset['log2FC'],
+            y=subset['neg_log10_pval'],
+            mode='markers',
+            marker=dict(color=color_mapping[sig], size=5),
+            text=subset[label_col],
+            name=sig
+        ))
+
+    fig.update_layout(
+        title=f"{condition1} vs {condition2}",
+        xaxis_title=f"log2 fold change ({condition2} - {condition1})",
+        yaxis_title='-log10 adj. p-value' if not uncorrected else '-log10 p-value',
+        shapes=shapes,
+        hovermode='closest'
+    )
+    return fig
+
+
+def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
+                   workflow="Protein", paired="Unpaired", uncorrected=False):
+    data = data.replace(0, np.nan)
+
+    annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
+    annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
+
     if workflow == "Protein":
         data_filtered = data[['ProteinNames'] + annotated_columns1 + annotated_columns2].copy()
-        label_column = "ProteinNames"
     elif workflow == "Phosphosite":
         data_filtered = data[['PTM_Collapse_key'] + annotated_columns1 + annotated_columns2].copy()
-        label_column = "PTM_Collapse_key"
 
-    data_filtered = data_filtered[data_filtered.iloc[:, 1:].notna().sum(axis=1) >=
-                                  (len(annotated_columns1) + len(annotated_columns2) - 2)]
+    threshold = len(annotated_columns1) + len(annotated_columns2) - 2
+    data_filtered = data_filtered[data_filtered.iloc[:, 1:].isna().sum(axis=1) < threshold]
 
-    if paired == "Unpaired":
-        log2fc = []
-        pvals = []
-        for _, row in data_filtered.iterrows():
-            values1 = row[annotated_columns1].astype(float).dropna()
-            values2 = row[annotated_columns2].astype(float).dropna()
+    log2fc_list = []
+    pvals_list = []
+
+    for idx, row in data_filtered.iterrows():
+        values1 = row[annotated_columns1].dropna().astype(float)
+        values2 = row[annotated_columns2].dropna().astype(float)
+
+        if paired == "Unpaired":
             if len(values1) < 2 or len(values2) < 2:
-                log2fc.append(np.nan)
-                pvals.append(np.nan)
+                log2fc_list.append(np.nan)
+                pvals_list.append(np.nan)
                 continue
-            log2fc.append(values2.mean() - values1.mean())
-            t_stat, p_val = stats.ttest_ind(values2, values1, equal_var=True, nan_policy='omit')
-            pvals.append(p_val)
-    elif paired == "Paired":
-        log2fc = []
-        pvals = []
-        for _, row in data_filtered.iterrows():
-            values1 = row[annotated_columns1].astype(float).values
-            values2 = row[annotated_columns2].astype(float).values
-            mask = ~np.isnan(values1) & ~np.isnan(values2)
-            if mask.sum() < 2:
-                log2fc.append(np.nan)
-                pvals.append(np.nan)
-                continue
-            log2fc.append(np.mean(values2[mask]) - np.mean(values1[mask]))
-            t_stat, p_val = stats.ttest_rel(values2[mask], values1[mask])
-            pvals.append(p_val)
+            log2fc_list.append(values2.mean() - values1.mean())
+            pvals_list.append(ttest_ind(values2, values1, equal_var=True).pvalue)
 
-    log2fc = np.array(log2fc)
-    pvals = np.array(pvals)
-    valid_idx = ~np.isnan(pvals)
-    log2fc = log2fc[valid_idx]
-    pvals = pvals[valid_idx]
-    data_filtered = data_filtered.iloc[valid_idx, :]
+        elif paired == "Paired":
+            paired_values = pd.concat([values1, values2], axis=1).dropna()
+            if paired_values.shape[0] < 1:
+                log2fc_list.append(np.nan)
+                pvals_list.append(np.nan)
+                continue
+            log2fc_list.append(paired_values.iloc[:, 1].mean() - paired_values.iloc[:, 0].mean())
+            if paired_values.shape[0] < 2:
+                pvals_list.append(np.nan)
+            else:
+                pvals_list.append(ttest_rel(paired_values.iloc[:, 1], paired_values.iloc[:, 0]).pvalue)
+
+    mask = ~np.isnan(pvals_list)
+    log2fc_array = np.array(log2fc_list)[mask]
+    pvals_array = np.array(pvals_list)[mask]
+    data_filtered = data_filtered.iloc[mask, :]
 
     if uncorrected:
-        adj_pvals = pvals
+        adj_pvals = pvals_array
     else:
-        adj_pvals = multipletests(pvals, method='fdr_bh')[1]
+        adj_pvals = multipletests(pvals_array, method='fdr_bh')[1]
 
-    volcano_data = pd.DataFrame({
-        "Feature": data_filtered[label_column],
-        "log2FC": log2fc,
-        "pval": pvals,
-        "adj_pval": adj_pvals
-    })
+    if workflow == "Protein":
+        volcano_df = pd.DataFrame({
+            'Protein': data_filtered['ProteinNames'],
+            'log2FC': log2fc_array,
+            'pval': pvals_array,
+            'adj_pval': adj_pvals
+        })
+    elif workflow == "Phosphosite":
+        volcano_df = pd.DataFrame({
+            'Phossite': data_filtered['PTM_Collapse_key'],
+            'log2FC': log2fc_array,
+            'pval': pvals_array,
+            'adj_pval': adj_pvals
+        })
 
-    sig_pval = in_pval
-    sig_log2fc = in_log2fc
-
-    volcano_data["significance"] = np.where(
-        (volcano_data["adj_pval"] < sig_pval) & (volcano_data["log2FC"] > sig_log2fc), "Upregulated",
-        np.where(
-            (volcano_data["adj_pval"] < sig_pval) & (volcano_data["log2FC"] < -sig_log2fc), "Downregulated",
-            "Not significant"
-        )
+    volcano_df['significance'] = np.where(
+        (volcano_df['adj_pval'] < in_pval) & (volcano_df['log2FC'] > in_log2fc), "Upregulated",
+        np.where((volcano_df['adj_pval'] < in_pval) & (volcano_df['log2FC'] < -in_log2fc), "Downregulated",
+                 "Not significant")
     )
 
-    volcano_data["neg_log10_pval"] = -np.log10(volcano_data["adj_pval"])
-    color_mapping = {"Downregulated": "blue", "Not significant": "gray", "Upregulated": "red"}
-    y_axis_label = "-log10 p-value" if uncorrected else "-log10 adj. p-value"
+    volcano_df['neg_log10_adj_pval'] = -np.log10(volcano_df['adj_pval'])
 
-    fig = px.scatter(
-        volcano_data,
-        x="log2FC",
-        y="neg_log10_pval",
-        color="significance",
-        color_discrete_map=color_mapping,
-        hover_data={"Feature": True, "log2FC": True, "neg_log10_pval": True, "significance": True},
-        title=f"{condition1} vs. {condition2}"
-    )
-
-    fig.add_shape(type="line", x0=sig_log2fc, x1=sig_log2fc, y0=0, y1=volcano_data["neg_log10_pval"].max(),
-                  line=dict(color="black", dash="dash"))
-    fig.add_shape(type="line", x0=-sig_log2fc, x1=-sig_log2fc, y0=0, y1=volcano_data["neg_log10_pval"].max(),
-                  line=dict(color="black", dash="dash"))
-    fig.add_shape(type="line", x0=volcano_data["log2FC"].min(), x1=volcano_data["log2FC"].max(),
-                  y0=-np.log10(sig_pval), y1=-np.log10(sig_pval),
-                  line=dict(color="black", dash="dash"))
-
-    fig.update_xaxes(title=f"log2 fold change ({condition2} - {condition1})", showline=False, showgrid=True,
-                     zeroline=False)
-    fig.update_yaxes(title=y_axis_label, showline=False, showgrid=True, zeroline=False)
-    fig.update_layout(hovermode="closest")
-
-    return fig
+    return volcano_df
