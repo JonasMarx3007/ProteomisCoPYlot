@@ -5,7 +5,13 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from scipy import stats
+from scipy.cluster.hierarchy import linkage, leaves_list
+from scipy.spatial.distance import squareform
+from statsmodels.stats.multitest import multipletests
+import plotly.express as px
 
+#BASIC AND DATA FUNCTIONS
 def rename_cols(df):
     rename_map = {
         "Run": "File.Name",
@@ -102,6 +108,7 @@ def inverse_log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.Da
     return combined_data
 
 
+#QC FUNCTIONS
 def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
     data = data.replace(0, np.nan)
     conditions = meta['condition'].unique()
@@ -529,5 +536,138 @@ def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20
         if ax.get_legend() is not None:
             ax.legend_.remove()
         fig.tight_layout()
+
+    return fig
+
+
+def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, height=8, dpi=100):
+    meta['sample'] = meta['sample'].astype(str)
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+    meta = meta.copy()
+    if id:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row.name+1}\n ({row['id']})", axis=1)
+    else:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row.name+1}", axis=1)
+    rename_map = dict(zip(meta['sample'], meta['new_sample']))
+    data = data.rename(columns=rename_map)
+    annotated_columns = meta['new_sample'].tolist()
+    data_filtered = data[annotated_columns]
+    correlation_matrix = data_filtered.corr(method='pearson')
+    distance_matrix = 1 - correlation_matrix
+    linkage_matrix = linkage(squareform(distance_matrix), method='complete')
+    ordered_indices = leaves_list(linkage_matrix)
+    ordered_corr = correlation_matrix.iloc[ordered_indices, ordered_indices]
+    vmin, vmax = (-1, 1) if full_range else (ordered_corr.min().min(), ordered_corr.max().max())
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    cax = ax.matshow(ordered_corr, cmap='coolwarm', vmin=vmin, vmax=vmax)
+    plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=45, ha='left')
+    plt.yticks(range(len(ordered_corr.index)), ordered_corr.index)
+    fig.colorbar(cax)
+    plt.tight_layout()
+    return fig
+
+
+#STATISTIC FUNCTIONS
+def volcano_plot(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
+                 workflow="Protein", paired="Unpaired", uncorrected=False):
+    annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
+    annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
+
+    if workflow == "Protein":
+        data_filtered = data[['ProteinNames'] + annotated_columns1 + annotated_columns2].copy()
+        label_column = "ProteinNames"
+    elif workflow == "Phosphosite":
+        data_filtered = data[['PTM_Collapse_key'] + annotated_columns1 + annotated_columns2].copy()
+        label_column = "PTM_Collapse_key"
+
+    data_filtered = data_filtered[data_filtered.iloc[:, 1:].notna().sum(axis=1) >=
+                                  (len(annotated_columns1) + len(annotated_columns2) - 2)]
+
+    if paired == "Unpaired":
+        log2fc = []
+        pvals = []
+        for _, row in data_filtered.iterrows():
+            values1 = row[annotated_columns1].astype(float).dropna()
+            values2 = row[annotated_columns2].astype(float).dropna()
+            if len(values1) < 2 or len(values2) < 2:
+                log2fc.append(np.nan)
+                pvals.append(np.nan)
+                continue
+            log2fc.append(values2.mean() - values1.mean())
+            t_stat, p_val = stats.ttest_ind(values2, values1, equal_var=True, nan_policy='omit')
+            pvals.append(p_val)
+    elif paired == "Paired":
+        log2fc = []
+        pvals = []
+        for _, row in data_filtered.iterrows():
+            values1 = row[annotated_columns1].astype(float).values
+            values2 = row[annotated_columns2].astype(float).values
+            mask = ~np.isnan(values1) & ~np.isnan(values2)
+            if mask.sum() < 2:
+                log2fc.append(np.nan)
+                pvals.append(np.nan)
+                continue
+            log2fc.append(np.mean(values2[mask]) - np.mean(values1[mask]))
+            t_stat, p_val = stats.ttest_rel(values2[mask], values1[mask])
+            pvals.append(p_val)
+
+    log2fc = np.array(log2fc)
+    pvals = np.array(pvals)
+    valid_idx = ~np.isnan(pvals)
+    log2fc = log2fc[valid_idx]
+    pvals = pvals[valid_idx]
+    data_filtered = data_filtered.iloc[valid_idx, :]
+
+    if uncorrected:
+        adj_pvals = pvals
+    else:
+        adj_pvals = multipletests(pvals, method='fdr_bh')[1]
+
+    volcano_data = pd.DataFrame({
+        "Feature": data_filtered[label_column],
+        "log2FC": log2fc,
+        "pval": pvals,
+        "adj_pval": adj_pvals
+    })
+
+    sig_pval = in_pval
+    sig_log2fc = in_log2fc
+
+    volcano_data["significance"] = np.where(
+        (volcano_data["adj_pval"] < sig_pval) & (volcano_data["log2FC"] > sig_log2fc), "Upregulated",
+        np.where(
+            (volcano_data["adj_pval"] < sig_pval) & (volcano_data["log2FC"] < -sig_log2fc), "Downregulated",
+            "Not significant"
+        )
+    )
+
+    volcano_data["neg_log10_pval"] = -np.log10(volcano_data["adj_pval"])
+    color_mapping = {"Downregulated": "blue", "Not significant": "gray", "Upregulated": "red"}
+    y_axis_label = "-log10 p-value" if uncorrected else "-log10 adj. p-value"
+
+    fig = px.scatter(
+        volcano_data,
+        x="log2FC",
+        y="neg_log10_pval",
+        color="significance",
+        color_discrete_map=color_mapping,
+        hover_data={"Feature": True, "log2FC": True, "neg_log10_pval": True, "significance": True},
+        title=f"{condition1} vs. {condition2}"
+    )
+
+    fig.add_shape(type="line", x0=sig_log2fc, x1=sig_log2fc, y0=0, y1=volcano_data["neg_log10_pval"].max(),
+                  line=dict(color="black", dash="dash"))
+    fig.add_shape(type="line", x0=-sig_log2fc, x1=-sig_log2fc, y0=0, y1=volcano_data["neg_log10_pval"].max(),
+                  line=dict(color="black", dash="dash"))
+    fig.add_shape(type="line", x0=volcano_data["log2FC"].min(), x1=volcano_data["log2FC"].max(),
+                  y0=-np.log10(sig_pval), y1=-np.log10(sig_pval),
+                  line=dict(color="black", dash="dash"))
+
+    fig.update_xaxes(title=f"log2 fold change ({condition2} - {condition1})", showline=False, showgrid=True,
+                     zeroline=False)
+    fig.update_yaxes(title=y_axis_label, showline=False, showgrid=True, zeroline=False)
+    fig.update_layout(hovermode="closest")
 
     return fig

@@ -347,27 +347,43 @@ def correlation_plot_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        if st.button("Change Display", key="Change12"):
-            st.session_state["change_display12"] = not st.session_state.get("change_display12", False)
-        if st.button("Toggle ID", key="toggle_id12"):
-            st.session_state["toggle_id12"] = not st.session_state.get("toggle_id12", False)
+        st.session_state["change_display12"] = st.checkbox("Change Display",
+                                                           value=st.session_state.get("change_display12", False),
+                                                           key="changeDisplay12")
+        st.session_state["toggle_id12"] = st.checkbox("Toggle ID", value=st.session_state.get("toggle_id12", True),
+                                                      key="toggleId12")
 
         st.markdown("---")
-
         level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level12")
 
         st.markdown("---")
-
-        text_position = st.selectbox(
-            "Position:", options={"Above": "up", "Below": "down"}, index=0, key="textPosition12"
-        )
-        annotation_text = st.text_area(
-            "Annotation Text:", value="", height=100, key="text12"
-        )
-
+        text_position = st.selectbox("Position:", options={"Above": "up", "Below": "down"}, index=0, key="textPosition12")
+        annotation_text = st.text_area("Annotation Text:", value="", height=100, key="text12")
         st.button("Add", key="addText12")
         st.button("Delete", key="deleteText12")
 
+        width = st.number_input("Plot Width", min_value=4, max_value=20, value=10)
+        height = st.number_input("Plot Height", min_value=4, max_value=20, value=8)
+        dpi = st.number_input("Plot DPI", min_value=50, max_value=300, value=100)
+
     with col2:
         st.header("Correlation Plot (Pearson)")
-        plot_placeholder = st.empty()
+
+        np.random.seed(0)
+        data = pd.DataFrame(np.random.rand(6, 6), columns=list("ABCDEF"))
+        meta = pd.DataFrame({
+            'sample': list("ABCDEF"),
+            'condition': ["Cond1", "Cond1", "Cond2", "Cond2", "Cond3", "Cond3"]
+        })
+
+        fig = corr_plot(
+            st.session_state["org_data"],
+            st.session_state["meta"],
+            method=False,
+            id=st.session_state.get("toggle_id12", True),
+            full_range=False,
+            width=width,
+            height=height,
+            dpi=dpi
+        )
+        st.pyplot(fig)
