@@ -921,58 +921,151 @@ def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc
 
 
 #SINGLE PROTEIN
-def boxplot_int_single(data, meta, outliers=False, id=True, header=True, legend=True, color_package=True, plot_colors=None):
-    if plot_colors is not None:
-        if len(plot_colors) < meta['condition'].nunique():
-            times_to_repeat = -(-meta['condition'].nunique() // len(plot_colors))  # Ceiling division
-            plot_colors = (plot_colors * times_to_repeat)[:meta['condition'].nunique()]
-
-    meta['id'] = meta['sample'].apply(extract_id_or_number)
+def compare_prot_line(data, meta, conditions, inputs, id=True, workflow="Protein", plot_colors=None):
+    meta = meta.copy()
+    data = data.copy()
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].apply(extract_id_or_number)
 
     if id:
-        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
-        meta['new_sample'] = meta.apply(lambda x: f"{x['condition']}_{x['new_sample']}\n ({x['id']})", axis=1)
+        meta = (meta.groupby("condition", group_keys=False)
+                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}\n ({g['id'].iloc[i]})"
+                                                          for i in range(len(g))]))
+                    .reset_index(drop=True))
     else:
-        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
-        meta['new_sample'] = meta.apply(lambda x: f"{x['condition']}_{x['new_sample']}", axis=1)
+        meta = (meta.groupby("condition", group_keys=False)
+                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}"
+                                                          for i in range(len(g))]))
+                    .reset_index(drop=True))
 
-    rename_map = dict(zip(meta['sample'], meta['new_sample']))
-    data = data.rename(columns=rename_map)
+    relevant_samples = meta["new_sample"].tolist()
+    rename_vector = dict(zip(meta["sample"], meta["new_sample"]))
+    data.rename(columns=rename_vector, inplace=True)
 
-    annotated_columns = meta['new_sample'].tolist()
-    data_filtered = data[annotated_columns]
+    if workflow == "Protein":
+        data_filtered = data[data["ProteinNames"].isin(inputs)][["ProteinNames"] + relevant_samples]
+        data_melted = data_filtered.melt(id_vars="ProteinNames", var_name="Sample", value_name="Value")
+    elif workflow == "Phosphosite":
+        data_filtered = data[data["PTM_Collapse_key"].isin(inputs)][["PTM_Collapse_key"] + relevant_samples]
+        data_melted = data_filtered.melt(id_vars="PTM_Collapse_key", var_name="Sample", value_name="Value")
+    else:
+        raise ValueError("workflow must be 'Protein' or 'Phosphosite'")
 
-    intensities_list = []
-    for condition in meta['condition'].unique():
-        cols = meta.loc[meta['condition'] == condition, 'new_sample']
+    data_melted = data_melted.merge(meta[["new_sample", "condition"]],
+                                    left_on="Sample", right_on="new_sample", how="left").dropna()
+
+    ordered_samples = []
+    for cond in conditions:
+        ordered_samples.extend(meta.loc[meta["condition"] == cond, "new_sample"].tolist())
+
+    sample_to_x = {s: i for i, s in enumerate(ordered_samples)}
+    data_melted["x"] = data_melted["Sample"].map(sample_to_x)
+
+    if workflow == "Protein":
+        data_melted["ProteinNames"] = data_melted["ProteinNames"].apply(lambda x: x.split(";")[0])
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    if workflow == "Protein":
+        for prot in data_melted["ProteinNames"].unique():
+            prot_data = data_melted[data_melted["ProteinNames"] == prot].sort_values("x")
+            ax.plot(prot_data["x"], prot_data["Value"], marker="o", label=prot)
+    elif workflow == "Phosphosite":
+        for site in data_melted["PTM_Collapse_key"].unique():
+            site_data = data_melted[data_melted["PTM_Collapse_key"] == site].sort_values("x")
+            ax.plot(site_data["x"], site_data["Value"], marker="o", label=site)
+
+    ax.set_xticks(range(len(ordered_samples)))
+    ax.set_xticklabels(ordered_samples, rotation=90)
+    ax.set_xlabel("Sample")
+    ax.set_ylabel("Log2 intensity")
+    ax.set_title(f"{workflow} Expression Across Samples")
+    ax.grid(True)
+    plt.tight_layout()
+
+    ax.legend(title=workflow, bbox_to_anchor=(1.05, 1), loc='upper left')
+    fig.subplots_adjust(right=0.75)
+
+    return fig
+
+
+def boxplot_int_single(data, meta, protein, outliers=False, id=True, header=True, legend=True, plot_colors=None):
+    import matplotlib.pyplot as plt
+
+    meta = meta.copy()
+    data = data.copy()
+
+    data = data[data.index == protein]
+    if data.empty:
+        raise ValueError(f"No data found for protein: {protein}")
+
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].apply(extract_id_or_number)
+
+    if id:
+        meta = meta.groupby("condition", group_keys=False).apply(
+            lambda g: g.assign(new_sample=[
+                f"{str(g['condition'].iloc[i])}_{i + 1}\n({g['id'].iloc[i]})" for i in range(len(g))
+            ])
+        ).reset_index(drop=True)
+    else:
+        meta = meta.groupby("condition", group_keys=False).apply(
+            lambda g: g.assign(new_sample=[
+                f"{str(g['condition'].iloc[i])}_{i + 1}" for i in range(len(g))
+            ])
+        ).reset_index(drop=True)
+
+    rename_vector = dict(zip(meta["sample"], meta["new_sample"]))
+    data.rename(columns=rename_vector, inplace=True)
+    annotated_columns = meta["new_sample"].tolist()
+    data_filtered = data.loc[:, annotated_columns]
+
+    intensities = []
+    positions = []
+    colors = []
+    labels = []
+    pos_counter = 0
+
+    if plot_colors is None:
+        plot_colors = plt.cm.tab10.colors
+
+    condition_colors = {cond: plot_colors[i % len(plot_colors)] for i, cond in enumerate(meta['condition'].unique())}
+
+    for condition in meta["condition"].unique():
+        cols = meta.loc[meta["condition"] == condition, "new_sample"]
+        if len(cols) < 3:
+            continue
         for col in cols:
-            intensity = data_filtered[col].mean(skipna=True)
-            if pd.notna(intensity):
-                intensities_list.append({'sample': col, 'intensity': intensity, 'condition': condition})
+            val = data_filtered[col].dropna().values
+            if len(val) > 0:
+                intensities.append(val)
+                positions.append(pos_counter)
+                colors.append(condition_colors[condition])
+                labels.append(col)
+                pos_counter += 1
 
-    intensities = pd.DataFrame(intensities_list)
-    intensities['sample'] = pd.Categorical(intensities['sample'], categories=meta['new_sample'], ordered=True)
+    if not intensities:
+        fig, ax = plt.subplots()
+        ax.text(0.5, 0.5, "No conditions with ≥3 samples", ha="center", va="center")
+        ax.axis("off")
+        return fig
 
-    fig = px.box(
-        intensities,
-        x="sample",
-        y="intensity",
-        color="condition" if legend else None,
-        points="all" if outliers else False,
-        color_discrete_sequence=plot_colors if plot_colors is not None else px.colors.qualitative.Plotly
-    )
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bplots = ax.boxplot(intensities, positions=positions, widths=0.6, patch_artist=True, showfliers=outliers)
 
+    for patch, color in zip(bplots['boxes'], colors):
+        patch.set_facecolor(color)
+
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    ax.set_xlabel("Sample")
+    ax.set_ylabel("log2 Intensity")
     if header:
-        fig.update_layout(title="Measured protein intensity values (log2)")
-    fig.update_layout(
-        xaxis_title="Sample",
-        yaxis_title="log2 Intensity",
-        legend_title="Condition" if legend else None
-    )
+        ax.set_title("Measured protein intensity values (log2)")
 
-    if not legend:
-        fig.update_layout(showlegend=False)
+    if legend:
+        handles = [plt.Line2D([0], [0], color=color, lw=4) for color in condition_colors.values()]
+        ax.legend(handles, condition_colors.keys(), bbox_to_anchor=(1.05, 1), loc='upper left')
 
-    fig.update_xaxes(tickangle=45)
-
+    plt.tight_layout()
     return fig
