@@ -1,7 +1,7 @@
 import streamlit as st
 import sys
 import os
-from ui.i0_main_tabs import render_main_tabs
+from ui.i0_main_tabs_server import render_main_tabs
 
 def resource_path(relative_path):
     try:
