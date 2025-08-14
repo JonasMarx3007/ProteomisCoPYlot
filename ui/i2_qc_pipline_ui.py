@@ -36,13 +36,26 @@ def qc_pipeline_ui():
 def coverage_plot_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "data" in st.session_state:
+        available_levels.append("Protein")
+    if "data2" in st.session_state:
+        available_levels.append("Peptide")
+    if "data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
         st.checkbox("Toggle IDs", value=False, key="toggle_id3")
         st.checkbox("Toggle Header", value=True, key="toggle_header3")
         st.checkbox("Toggle Legend", value=True, key="toggle_legend3")
 
         st.markdown("---")
-        st.selectbox("Level:", ["Protein", "Peptide", "Phosphosite"], key="level3")
+        if available_levels:
+            level = st.selectbox("Level:", available_levels, key="level3")
+        else:
+            st.info("No data available for plotting.")
+            return
+
         st.selectbox("Type:", ["Normal", "Summary"], key="type3")
         st.markdown("---")
         st.header("Plot Size & Resolution")
@@ -58,11 +71,21 @@ def coverage_plot_ui():
         st.button("Delete", key="deleteText3")
 
     with col2:
-        if "data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Peptide":
+            data_to_use = st.session_state.get("data2", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = coverage_plot(
-                    data=st.session_state["data"],
-                    meta=st.session_state["meta"],
+                    data=data_to_use,
+                    meta=meta_to_use,
                     id=st.session_state.get("toggle_id3", True),
                     header=st.session_state.get("toggle_header3", True),
                     legend=st.session_state.get("toggle_legend3", True),
@@ -74,7 +97,7 @@ def coverage_plot_ui():
             except Exception as e:
                 st.error(f"Error generating coverage plot: {e}")
         else:
-            st.info("Please upload both data and metadata to see the plot.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def missing_value_plot_ui():

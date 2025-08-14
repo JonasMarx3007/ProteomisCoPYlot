@@ -1066,3 +1066,6 @@ def boxplot_int_single(data, meta, protein, outliers=False, header=True, legend=
         ax.legend(handles, plotted_conditions, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     return fig
+
+
+#Phospho-specific
