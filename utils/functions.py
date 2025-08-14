@@ -599,11 +599,11 @@ def volcano_plot(volcano_df, condition1, condition2, in_pval=0.05, in_log2fc=1, 
     shapes = [
         dict(type="line", x0=in_log2fc, x1=in_log2fc, y0=0, y1=max_y, line=dict(color="black", dash="dash")),
         dict(type="line", x0=-in_log2fc, x1=-in_log2fc, y0=0, y1=max_y, line=dict(color="black", dash="dash")),
-        dict(type="line", x0=volcano_df['log2FC'].min(), x1=volcano_df['log2FC'].max(), y0=y_hline, y1=y_hline,
-             line=dict(color="black", dash="dash"))
+        dict(type="line", x0=volcano_df['log2FC'].min(), x1=volcano_df['log2FC'].max(),
+             y0=y_hline, y1=y_hline, line=dict(color="black", dash="dash"))
     ]
 
-    label_col = 'Protein' if 'Protein' in volcano_df.columns else 'Phossite'
+    label_col = 'ProteinNames' if 'ProteinNames' in volcano_df.columns else 'PTM_Collapse_key'
 
     fig = go.Figure()
     for sig, color in color_mapping.items():
@@ -630,79 +630,64 @@ def volcano_plot(volcano_df, condition1, condition2, in_pval=0.05, in_log2fc=1, 
 @st.cache_data
 def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
                    workflow="Protein", paired="Unpaired", uncorrected=False):
-    data = data.replace(0, np.nan)
+    import numpy as np
+    import pandas as pd
+    from scipy.stats import t
+    from statsmodels.stats.multitest import multipletests
 
+    label_col = "ProteinNames" if workflow == "Protein" else "PTM_Collapse_key"
     annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
     annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
+    cols_to_use = [label_col] + annotated_columns1 + annotated_columns2
 
-    if workflow == "Protein":
-        cols = ["ProteinNames"] + annotated_columns1 + annotated_columns2
-        data_filtered = data[cols].copy()
-    elif workflow == "Phosphosite":
-        cols = ["PTM_Collapse_key"] + annotated_columns1 + annotated_columns2
-        data_filtered = data[cols].copy()
+    df = data[cols_to_use].replace(0, np.nan).copy()
+    arr_x = df[annotated_columns1].to_numpy(dtype=float)
+    arr_y = df[annotated_columns2].to_numpy(dtype=float)
 
-    data_filtered = data_filtered[data_filtered.iloc[:, 1:].notna().sum(axis=1) >= 2].reset_index(drop=True)
+    n1_real = np.sum(~np.isnan(arr_x), axis=1)
+    n2_real = np.sum(~np.isnan(arr_y), axis=1)
+    valid_mask = (n1_real >= 2) & (n2_real >= 2)
 
-    log2fc_list = []
-    pvals_list = []
+    df = df.loc[valid_mask]
+    arr_x = arr_x[valid_mask]
+    arr_y = arr_y[valid_mask]
+    n1 = n1_real[valid_mask]
+    n2 = n2_real[valid_mask]
 
-    for _, row in data_filtered.iterrows():
-        values1 = row[annotated_columns1].astype(float).dropna()
-        values2 = row[annotated_columns2].astype(float).dropna()
+    mean1 = np.nanmean(arr_x, axis=1)
+    mean2 = np.nanmean(arr_y, axis=1)
+    log2fc = mean2 - mean1
 
-        if len(values1) < 2 or len(values2) < 2:
-            log2fc_list.append(np.nan)
-            pvals_list.append(np.nan)
-            continue
-
-        if paired == "Unpaired":
-            log2fc_list.append(values2.mean() - values1.mean())
-            pvals_list.append(ttest_ind(values2, values1, equal_var=True).pvalue)
-        else:
-            min_len = min(len(values1), len(values2))
-            values1 = values1.iloc[:min_len]
-            values2 = values2.iloc[:min_len]
-            log2fc_list.append(values2.mean() - values1.mean())
-            pvals_list.append(ttest_rel(values2, values1).pvalue)
-
-    valid = ~np.isnan(pvals_list)
-    data_filtered = data_filtered[valid].reset_index(drop=True)
-    log2fc_array = np.array(log2fc_list)[valid]
-    pvals_array = np.array(pvals_list)[valid]
-
-    if uncorrected:
-        adj_pvals_array = pvals_array
+    if paired == "Unpaired":
+        var1 = np.nanvar(arr_x, axis=1, ddof=1)
+        var2 = np.nanvar(arr_y, axis=1, ddof=1)
+        pooled_var = ((n1 - 1) * var1 + (n2 - 1) * var2) / (n1 + n2 - 2)
+        se = np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+        t_stat = log2fc / se
+        dfree = n1 + n2 - 2
+        pvals = 2 * t.sf(np.abs(t_stat), dfree)
     else:
-        adj_pvals_array = multipletests(pvals_array, method='fdr_bh')[1]
+        diffs = arr_y - arr_x
+        min_len = np.minimum(n1, n2)
+        mean_diff = np.nanmean(diffs, axis=1)
+        se_diff = np.nanstd(diffs, axis=1, ddof=1) / np.sqrt(min_len)
+        t_stat = mean_diff / se_diff
+        pvals = 2 * t.sf(np.abs(t_stat), min_len - 1)
 
-    if workflow == "Protein":
-        volcano_data = pd.DataFrame({
-            "Protein": data_filtered["ProteinNames"],
-            "log2FC": log2fc_array,
-            "pval": pvals_array,
-            "adj_pval": adj_pvals_array
-        })
-    else:
-        volcano_data = pd.DataFrame({
-            "Phossite": data_filtered["PTM_Collapse_key"],
-            "log2FC": log2fc_array,
-            "pval": pvals_array,
-            "adj_pval": adj_pvals_array
-        })
+    adj_pvals = pvals if uncorrected else multipletests(pvals, method='fdr_bh')[1]
 
-    def significance(row):
-        if row["adj_pval"] < in_pval and row["log2FC"] > in_log2fc:
-            return "Upregulated"
-        elif row["adj_pval"] < in_pval and row["log2FC"] < -in_log2fc:
-            return "Downregulated"
-        else:
-            return "Not significant"
+    significance = np.full(len(log2fc), "Not significant", dtype=object)
+    significance[(adj_pvals < in_pval) & (log2fc > in_log2fc)] = "Upregulated"
+    significance[(adj_pvals < in_pval) & (log2fc < -in_log2fc)] = "Downregulated"
 
-    volcano_data["significance"] = volcano_data.apply(significance, axis=1)
-    volcano_data["neg_log10_adj_pval"] = -np.log10(volcano_data["adj_pval"])
-
-    return volcano_data
+    return pd.DataFrame({
+        label_col: df[label_col].values,
+        "log2FC": log2fc,
+        "pval": pvals,
+        "adj_pval": adj_pvals,
+        "significance": significance,
+        "neg_log10_adj_pval": -np.log10(adj_pvals)
+    })
 
 
 gp = GProfiler(return_dataframe=True)
