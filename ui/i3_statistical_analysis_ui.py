@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.functions import *
+from utils.functions import volcano_plot, volcano_plot_sim, volcano_data_f, enrichment_analysis, different_genes
 
 #MAIN
 def statistical_analysis_ui():
@@ -28,41 +28,53 @@ def volcano_plot_ui():
         pval_threshold = st.number_input("P-value threshold:", value=0.05, step=0.01, key="in_pval10")
         log2fc_threshold = st.number_input("log₂ FC threshold:", value=1.0, step=0.1, key="in_log2fc10")
         uncorrected = st.checkbox("Use uncorrected p-values", value=False, key="uncorrected10")
-
         st.markdown("---")
-
         test_type = st.selectbox("Test Type:", options=["Unpaired", "Paired"], key="paired10")
-        level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level10")
+
+        available_levels = []
+        if "log2_data" in st.session_state and "meta" in st.session_state:
+            available_levels.append("Protein")
+        if "log2_data3" in st.session_state and "meta2" in st.session_state:
+            available_levels.append("Phosphosite")
+
+        if not available_levels:
+            st.warning("No data loaded. Please load Protein or Phosphosite data.")
+            return
+
+        level = st.selectbox("Level:", options=available_levels, key="level10")
 
         st.markdown("---")
-
         st.download_button("Download Volcano Data", data=b"", key="download10")
         st.download_button("Download All Volcano Data", data=b"", key="download10a")
-
         st.markdown("---")
 
         text_position = st.selectbox("Position:", options={"Above": "up", "Below": "down"}, index=0, key="textPosition10")
         annotation_text = st.text_area("Annotation Text:", value="", height=100, key="text10")
-
         add_col, del_col = st.columns(2)
         with add_col:
             st.button("Add", key="addText10")
         with del_col:
             st.button("Delete", key="deleteText10")
-
         st.markdown("---")
-
         st.button("Add Plot to Report", key="addVolc")
         st.button("Remove Plot from Report", key="removeVolc")
 
     with col2:
         st.subheader("Conditions")
 
+        if level == "Protein":
+            data_key = "log2_data"
+            meta_key = "meta"
+        else:
+            data_key = "log2_data3"
+            meta_key = "meta2"
+
         conditions_list = []
-        if "meta" in st.session_state and not st.session_state.meta.empty:
-            meta_df = st.session_state.meta
-            counts = meta_df['condition'].value_counts()
-            conditions_list = sorted(counts[counts >= 2].index.tolist())
+        if data_key in st.session_state and meta_key in st.session_state:
+            meta_df = st.session_state[meta_key]
+            if not meta_df.empty:
+                counts = meta_df['condition'].value_counts()
+                conditions_list = sorted(counts[counts >= 2].index.tolist())
 
         condition1 = st.selectbox("Condition 1:", options=conditions_list, key="condition1_10")
         condition2 = st.selectbox("Condition 2:", options=conditions_list, key="condition2_10")
@@ -71,11 +83,12 @@ def volcano_plot_ui():
         st.subheader("Volcano Plot")
 
         volcano_df = None
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        if data_key in st.session_state and meta_key in st.session_state:
             if condition1 and condition2 and condition1 != condition2:
+                # compute volcano data once
                 volcano_df = volcano_data_f(
-                    st.session_state.log2_data,
-                    st.session_state.meta,
+                    st.session_state[data_key],
+                    st.session_state[meta_key],
                     condition1=condition1,
                     condition2=condition2,
                     in_pval=pval_threshold,
@@ -85,29 +98,22 @@ def volcano_plot_ui():
                     uncorrected=uncorrected
                 )
 
+                # generate plot from the precomputed DataFrame
                 fig = volcano_plot(
-                    st.session_state.log2_data,
-                    st.session_state.meta,
+                    volcano_df,
                     condition1=condition1,
                     condition2=condition2,
                     in_pval=pval_threshold,
                     in_log2fc=log2fc_threshold,
-                    workflow=level,
-                    paired=test_type,
                     uncorrected=uncorrected
                 )
+
                 st.plotly_chart(fig, use_container_width=True)
+                st.dataframe(volcano_df)
             else:
                 st.info("Please select two different conditions to generate the volcano plot.")
         else:
             st.warning("No data loaded. Please load data first.")
-
-        st.markdown("---")
-        st.subheader("Volcano Data Table")
-        if volcano_df is not None:
-            st.dataframe(volcano_df)
-        else:
-            st.info("Volcano data will appear here after selecting conditions and generating the plot.")
 
 
 def gsea_ui():
@@ -153,7 +159,7 @@ def gsea_ui():
     condition2 = st.session_state.get("condition2_10", None)
     in_pval = st.session_state.get("in_pval10", 0.05)
     in_log2fc = st.session_state.get("in_log2fc10", 1.0)
-    use_uncorrected = st.session_state.get("uncorrected10", False)  # take from volcano UI
+    use_uncorrected = st.session_state.get("uncorrected10", False)
 
     if condition1 and condition2 and condition1 != condition2:
         diff_res = different_genes(
@@ -195,7 +201,17 @@ def simulation_ui():
 
         st.markdown("---")
 
-        level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level10.5")
+        available_levels = []
+        if "log2_data" in st.session_state and "meta" in st.session_state:
+            available_levels.append("Protein")
+        if "log2_data3" in st.session_state and "meta2" in st.session_state:
+            available_levels.append("Phosphosite")
+
+        if not available_levels:
+            st.warning("No data available for simulation.")
+            return
+
+        level = st.selectbox("Level:", options=available_levels, key="level10.5")
 
         st.markdown("---")
 
@@ -206,8 +222,14 @@ def simulation_ui():
         st.subheader("Conditions")
 
         conditions_list = []
-        if "meta" in st.session_state and not st.session_state.meta.empty:
+        if level == "Protein" and "meta" in st.session_state and not st.session_state.meta.empty:
             meta_df = st.session_state.meta
+        elif level == "Phosphosite" and "meta2" in st.session_state and not st.session_state.meta2.empty:
+            meta_df = st.session_state.meta2
+        else:
+            meta_df = None
+
+        if meta_df is not None:
             counts = meta_df['condition'].value_counts()
             conditions_list = sorted(counts[counts >= 2].index.tolist())
 
@@ -217,11 +239,14 @@ def simulation_ui():
         st.markdown("---")
 
         st.subheader("Simulation Volcano Plot")
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        data_key = "log2_data" if level == "Protein" else "log2_data3"
+        meta_key = "meta" if level == "Protein" else "meta2"
+
+        if data_key in st.session_state and meta_key in st.session_state:
             if condition1 and condition2:
                 fig = volcano_plot_sim(
-                    data=st.session_state["log2_data"],
-                    meta=st.session_state["meta"],
+                    data=st.session_state[data_key],
+                    meta=st.session_state[meta_key],
                     condition1=condition1,
                     condition2=condition2,
                     in_pval=pval_threshold,
