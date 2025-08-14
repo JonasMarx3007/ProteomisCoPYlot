@@ -921,15 +921,17 @@ def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc
 
 
 #SINGLE PROTEIN
-def compare_prot_line(data, meta, conditions, inputs, id=True, workflow="Protein", plot_colors=None):
+def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, legend=True,
+                      workflow="Protein", plot_colors=None, width=10, height=6, dpi=100):
+    import matplotlib.pyplot as plt
+
     meta = meta.copy()
     data = data.copy()
     meta["sample"] = meta["sample"].astype(str)
-    meta["id"] = meta["sample"].apply(extract_id_or_number)
 
     if id:
         meta = (meta.groupby("condition", group_keys=False)
-                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}\n ({g['id'].iloc[i]})"
+                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}\n({g['sample'].iloc[i]})"
                                                           for i in range(len(g))]))
                     .reset_index(drop=True))
     else:
@@ -964,108 +966,103 @@ def compare_prot_line(data, meta, conditions, inputs, id=True, workflow="Protein
     if workflow == "Protein":
         data_melted["ProteinNames"] = data_melted["ProteinNames"].apply(lambda x: x.split(";")[0])
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    if plot_colors is None:
+        import matplotlib.pyplot as plt
+        plot_colors = plt.cm.tab10.colors
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
 
     if workflow == "Protein":
-        for prot in data_melted["ProteinNames"].unique():
+        for i, prot in enumerate(data_melted["ProteinNames"].unique()):
             prot_data = data_melted[data_melted["ProteinNames"] == prot].sort_values("x")
-            ax.plot(prot_data["x"], prot_data["Value"], marker="o", label=prot)
+            ax.plot(prot_data["x"], prot_data["Value"], marker="o", label=prot,
+                    color=plot_colors[i % len(plot_colors)])
     elif workflow == "Phosphosite":
-        for site in data_melted["PTM_Collapse_key"].unique():
+        for i, site in enumerate(data_melted["PTM_Collapse_key"].unique()):
             site_data = data_melted[data_melted["PTM_Collapse_key"] == site].sort_values("x")
-            ax.plot(site_data["x"], site_data["Value"], marker="o", label=site)
+            ax.plot(site_data["x"], site_data["Value"], marker="o", label=site,
+                    color=plot_colors[i % len(plot_colors)])
 
     ax.set_xticks(range(len(ordered_samples)))
     ax.set_xticklabels(ordered_samples, rotation=90)
     ax.set_xlabel("Sample")
     ax.set_ylabel("Log2 intensity")
-    ax.set_title(f"{workflow} Expression Across Samples")
+
+    if header:
+        ax.set_title(f"{workflow} Expression Across Samples")
+
+    if legend:
+        ax.legend(title=workflow, bbox_to_anchor=(1.05, 1), loc='upper left')
+
     ax.grid(True)
     plt.tight_layout()
-
-    ax.legend(title=workflow, bbox_to_anchor=(1.05, 1), loc='upper left')
     fig.subplots_adjust(right=0.75)
 
     return fig
 
 
-def boxplot_int_single(data, meta, protein, outliers=False, id=True, header=True, legend=True, plot_colors=None):
+def boxplot_int_single(data, meta, protein, outliers=False, header=True, legend=True,
+                       plot_colors=None, width=8, height=6, dpi=100):
     import matplotlib.pyplot as plt
+    import pandas as pd
 
     meta = meta.copy()
     data = data.copy()
-
     data = data[data.index == protein]
     if data.empty:
         raise ValueError(f"No data found for protein: {protein}")
 
-    meta["sample"] = meta["sample"].astype(str)
-    meta["id"] = meta["sample"].apply(extract_id_or_number)
-
-    if id:
-        meta = meta.groupby("condition", group_keys=False).apply(
-            lambda g: g.assign(new_sample=[
-                f"{str(g['condition'].iloc[i])}_{i + 1}\n({g['id'].iloc[i]})" for i in range(len(g))
-            ])
-        ).reset_index(drop=True)
-    else:
-        meta = meta.groupby("condition", group_keys=False).apply(
-            lambda g: g.assign(new_sample=[
-                f"{str(g['condition'].iloc[i])}_{i + 1}" for i in range(len(g))
-            ])
-        ).reset_index(drop=True)
+    meta = meta.groupby("condition", group_keys=False).apply(
+        lambda g: g.assign(new_sample=[f"{str(g['condition'].iloc[i])}_{i + 1}" for i in range(len(g))])
+    ).reset_index(drop=True)
 
     rename_vector = dict(zip(meta["sample"], meta["new_sample"]))
     data.rename(columns=rename_vector, inplace=True)
     annotated_columns = meta["new_sample"].tolist()
     data_filtered = data.loc[:, annotated_columns]
 
-    intensities = []
-    positions = []
-    colors = []
-    labels = []
-    pos_counter = 0
-
     if plot_colors is None:
         plot_colors = plt.cm.tab10.colors
 
+    intensities = []
+    labels = []
+    colors = []
+    plotted_conditions = []
     condition_colors = {cond: plot_colors[i % len(plot_colors)] for i, cond in enumerate(meta['condition'].unique())}
 
     for condition in meta["condition"].unique():
         cols = meta.loc[meta["condition"] == condition, "new_sample"]
         if len(cols) < 3:
             continue
-        for col in cols:
-            val = data_filtered[col].dropna().values
-            if len(val) > 0:
-                intensities.append(val)
-                positions.append(pos_counter)
-                colors.append(condition_colors[condition])
-                labels.append(col)
-                pos_counter += 1
+        vals = data_filtered[cols].values.flatten()
+        vals = vals[~pd.isna(vals)]
+        if len(vals) == 0:
+            continue
+        intensities.append(vals)
+        labels.append(condition)
+        colors.append(condition_colors[condition])
+        plotted_conditions.append(condition)
 
     if not intensities:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
         ax.text(0.5, 0.5, "No conditions with ≥3 samples", ha="center", va="center")
         ax.axis("off")
         return fig
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    bplots = ax.boxplot(intensities, positions=positions, widths=0.6, patch_artist=True, showfliers=outliers)
-
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    bplots = ax.boxplot(intensities, patch_artist=True, showfliers=outliers)
     for patch, color in zip(bplots['boxes'], colors):
         patch.set_facecolor(color)
 
-    ax.set_xticks(positions)
+    ax.set_xticks(range(1, len(labels) + 1))
     ax.set_xticklabels(labels, rotation=45, ha='right')
-    ax.set_xlabel("Sample")
+    ax.set_xlabel("Condition")
     ax.set_ylabel("log2 Intensity")
     if header:
-        ax.set_title("Measured protein intensity values (log2)")
-
+        display_protein = protein.split(";")[0]
+        ax.set_title(f"Measured {display_protein} intensity values (log2)")
     if legend:
-        handles = [plt.Line2D([0], [0], color=color, lw=4) for color in condition_colors.values()]
-        ax.legend(handles, condition_colors.keys(), bbox_to_anchor=(1.05, 1), loc='upper left')
-
+        handles = [plt.Line2D([0], [0], color=condition_colors[c], lw=4) for c in plotted_conditions]
+        ax.legend(handles, plotted_conditions, bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     return fig
