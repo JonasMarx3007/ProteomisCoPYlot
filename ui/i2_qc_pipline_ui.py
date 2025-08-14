@@ -1,5 +1,6 @@
 import streamlit as st
-from utils.functions import *
+import matplotlib as plt
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot
 
 #MAIN
 def qc_pipeline_ui():

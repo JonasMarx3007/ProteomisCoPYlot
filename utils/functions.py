@@ -13,6 +13,7 @@ from statsmodels.stats.multitest import multipletests
 import plotly.graph_objects as go
 from gprofiler import GProfiler
 import plotly.express as px
+import streamlit as st
 
 #BASIC AND DATA FUNCTIONS
 def rename_cols(df):
@@ -54,6 +55,7 @@ def rename_cols(df):
     return df
 
 
+@st.cache_data
 def read_data(file):
     if hasattr(file, 'name'):
         filename = file.name
@@ -88,6 +90,7 @@ def extract_id_or_number(x):
     return m.group(0) if m else x
 
 
+@st.cache_data
 def log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     annotated_columns = meta['sample'].tolist()
     data_filtered = data[annotated_columns].copy()
@@ -100,6 +103,7 @@ def log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     return combined_data
 
 
+@st.cache_data
 def inverse_log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.DataFrame:
     annotated_columns = meta['sample'].tolist()
     log2_data = data[annotated_columns].copy()
@@ -112,6 +116,7 @@ def inverse_log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.Da
 
 
 #QC FUNCTIONS
+@st.cache_data
 def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
     data = data.replace(0, np.nan)
     conditions = meta['condition'].unique()
@@ -184,6 +189,7 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
     return fig
 
 
+@st.cache_data
 def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88, width=7.87, height=3.94, dpi=300):
     annotated_columns = meta['sample']
     data_filtered = data[annotated_columns].copy()
@@ -231,6 +237,7 @@ def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88
     return fig
 
 
+@st.cache_data
 def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
     import numpy as np
     from scipy.stats import gaussian_kde
@@ -285,6 +292,7 @@ def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
         plt.tight_layout()
 
 
+@st.cache_data
 def boxplot_int(data, meta, outliers=False, header=True, legend=True, plot_colors=None,
                 width_cm=20, height_cm=10, dpi=100):
     n_conditions = meta['condition'].nunique()
@@ -353,6 +361,7 @@ def boxplot_int(data, meta, outliers=False, header=True, legend=True, plot_color
     return fig
 
 
+@st.cache_data
 def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=None,
              width_cm=20, height_cm=10, dpi=100):
     conditions = meta['condition'].unique()
@@ -427,6 +436,7 @@ def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=N
     return fig
 
 
+@st.cache_data
 def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, height_cm=10, dpi=100):
     meta['condition'] = pd.Categorical(meta['condition'], categories=meta['condition'].unique(), ordered=True)
     annotated_columns = meta['sample'].tolist()
@@ -473,6 +483,7 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
     return fig
 
 
+@st.cache_data
 def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20, height_cm=10, dpi=300,
                    legend=True, header=True):
     data = data.replace(0, np.nan)
@@ -543,6 +554,7 @@ def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20
     return fig
 
 
+@st.cache_data
 def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, height=8, dpi=100):
     meta = meta.copy()
     meta['sample'] = meta['sample'].astype(str)
@@ -579,6 +591,7 @@ def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, hei
 
 
 #STATISTIC FUNCTIONS
+@st.cache_data
 def volcano_plot(volcano_df, condition1, condition2, in_pval=0.05, in_log2fc=1, uncorrected=False):
     color_mapping = {'Downregulated': 'blue', 'Not significant': 'gray', 'Upregulated': 'red'}
     y_hline = -np.log10(in_pval)
@@ -615,6 +628,7 @@ def volcano_plot(volcano_df, condition1, condition2, in_pval=0.05, in_log2fc=1, 
     return fig
 
 
+@st.cache_data
 def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
                    workflow="Protein", paired="Unpaired", uncorrected=False):
     data = data.replace(0, np.nan)
@@ -694,6 +708,7 @@ def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1
 
 gp = GProfiler(return_dataframe=True)
 
+@st.cache_data
 def different_genes(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
                     workflow="Gene", paired="Unpaired", uncorrected=False):
     annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
@@ -760,6 +775,8 @@ def different_genes(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=
 
     return {'Upregulated': up_genes, 'Downregulated': down_genes}
 
+
+@st.cache_data
 def enrichment_analysis(gene_list, top_n=10, min_num=20, max_num=300):
     gene_list = [g for g in gene_list if g]
     if not gene_list:
@@ -799,6 +816,7 @@ def enrichment_analysis(gene_list, top_n=10, min_num=20, max_num=300):
     return fig
 
 
+@st.cache_data
 def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
                      workflow="Protein", mod_var=1, mod_n=0):
     annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
@@ -869,6 +887,7 @@ def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc
 
 
 #SINGLE PROTEIN
+@st.cache_data
 def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, legend=True,
                       workflow="Protein", plot_colors=None, width=10, height=6, dpi=100):
     import matplotlib.pyplot as plt
@@ -949,6 +968,7 @@ def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, lege
     return fig
 
 
+@st.cache_data
 def boxplot_int_single(data, meta, protein, outliers=False, header=True, legend=True,
                        plot_colors=None, width=8, height=6, dpi=100):
     import matplotlib.pyplot as plt
