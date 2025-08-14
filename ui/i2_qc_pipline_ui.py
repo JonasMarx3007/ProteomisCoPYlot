@@ -103,10 +103,23 @@ def coverage_plot_ui():
 def missing_value_plot_ui():
     col1, col2 = st.columns([1, 3])
 
+    available_levels = []
+    if "data" in st.session_state:
+        available_levels.append("Protein")
+    if "data2" in st.session_state:
+        available_levels.extend(["Peptide", "Precursor"])
+    if "data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
         header_toggle = st.checkbox("Toggle Header", value=True, key="toggle_header4")
         st.markdown("---")
-        level = st.selectbox("Level:", ["Protein", "Peptide", "Phosphosite", "Precursor"], key="level4")
+        if available_levels:
+            level = st.selectbox("Level:", available_levels, key="level4")
+        else:
+            st.info("No data available for plotting.")
+            return
+
         bin_val = st.number_input("Bin missing values (optional):", value=0, min_value=0, key="missValBin4")
         st.markdown("---")
         text_toggle = st.checkbox("Toggle Text", value=True, key="toggle_text4")
@@ -125,11 +138,21 @@ def missing_value_plot_ui():
         st.button("Delete", key="deleteText4")
 
     with col2:
-        if "data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level in ["Peptide", "Precursor"]:
+            data_to_use = st.session_state.get("data2", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = missing_value_plot(
-                    data=st.session_state["data"],
-                    meta=st.session_state["meta"],
+                    data=data_to_use,
+                    meta=meta_to_use,
                     bin=bin_val,
                     header=header_toggle,
                     text=text_toggle,
@@ -142,27 +165,34 @@ def missing_value_plot_ui():
             except Exception as e:
                 st.error(f"Error generating missing value plot: {e}")
         else:
-            st.info("Please upload both data and metadata to see the plot.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def histogram_intensity_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "log2_data" in st.session_state:
+        available_levels.append("Protein")
+    if "log2_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
         header = st.checkbox("Show Header", value=True, key="toggle_header5")
         legend = st.checkbox("Show Legend", value=True, key="toggle_legend5")
         st.markdown("---")
-        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level5")
+        if available_levels:
+            level = st.selectbox("Level:", available_levels, key="level5")
+        else:
+            st.info("No data available for plotting.")
+            return
         st.markdown("---")
         st.header("Plot Size & Resolution")
         width_cm = st.number_input("Width (cm):", value=20, key="plotWidth5")
         height_cm = st.number_input("Height (cm):", value=10, key="plotHeight5")
         dpi = st.number_input("DPI:", value=300, key="plotDPI5")
         file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat5")
-
-        st.download_button("Download Plot", data=b"", file_name=f"hist_intensity.{file_format}",
-                           key="downloadHistIntPlot")
-
+        st.download_button("Download Plot", data=b"", file_name=f"hist_intensity.{file_format}", key="downloadHistIntPlot")
         st.markdown("---")
         position = st.selectbox("Position:", ["Above", "Below"], key="textPosition5")
         annotation_text = st.text_area("Annotation Text:", key="text5")
@@ -170,175 +200,259 @@ def histogram_intensity_ui():
         st.button("Delete", key="deleteText5")
 
     with col2:
-        if "log2_data" in st.session_state and "meta" in st.session_state:
-            try:
-                data = st.session_state["log2_data"]
-                meta = st.session_state["meta"]
-                figsize = (width_cm / 2.54, height_cm / 2.54)
+        if level == "Protein":
+            data_to_use = st.session_state.get("log2_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("log2_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
 
+        if data_to_use is not None and meta_to_use is not None:
+            try:
+                figsize = (width_cm / 2.54, height_cm / 2.54)
                 fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-                histo_int(data, meta, header=header, legend=legend, ax=ax)
+                histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax)
                 st.pyplot(fig)
                 plt.close(fig)
-
             except Exception as e:
                 st.error(f"Error generating histogram intensity plot: {e}")
         else:
-            st.info("Please define both log2_data and metadata to see the plot.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def boxplot_intensity_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "log2_data" in st.session_state:
+        available_levels.append("Protein")
+    if "log2_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
-        outliers = st.checkbox("Show Outliers", value=False)
-        header = st.checkbox("Show Header", value=True)
-        legend = st.checkbox("Show Legend", value=True)
-        width_cm = st.number_input("Width (cm):", value=20)
-        height_cm = st.number_input("Height (cm):", value=10)
-        dpi = st.number_input("DPI:", value=300)
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"])
-        st.download_button("Download Plot", data=b"", file_name=f"boxplot_intensity.{file_format}")
+        if not available_levels:
+            st.info("No data available for plotting.")
+            return
+
+        st.checkbox("Show Outliers", value=False, key="outliers6")
+        st.checkbox("Show Header", value=True, key="header6")
+        st.checkbox("Show Legend", value=True, key="legend6")
 
         st.markdown("---")
-        position = st.selectbox("Position:", ["Above", "Below"])
-        annotation_text = st.text_area("Annotation Text:")
-        st.button("Add")
-        st.button("Delete")
+        level = st.selectbox("Level:", available_levels, key="level6")
 
+        st.markdown("---")
+        st.header("Plot Size & Resolution")
+        st.number_input("Width (cm):", value=20, key="width6")
+        st.number_input("Height (cm):", value=10, key="height6")
+        st.number_input("DPI:", value=300, key="dpi6")
+        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format6")
+        st.download_button("Download Plot", data=b"", file_name=f"boxplot_intensity.png", key="downloadBoxplot")
+
+        st.markdown("---")
+        st.selectbox("Position:", ["Above", "Below"], key="position6")
+        st.text_area("Annotation Text:", key="text6")
+        st.button("Add", key="add6")
+        st.button("Delete", key="delete6")
 
     with col2:
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("log2_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("log2_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = boxplot_int(
-                    data=st.session_state["log2_data"],
-                    meta=st.session_state["meta"],
-                    outliers=outliers,
-                    header=header,
-                    legend=legend,
-                    width_cm=width_cm,
-                    height_cm=height_cm,
-                    dpi=dpi,
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    outliers=st.session_state.get("outliers6", False),
+                    header=st.session_state.get("header6", True),
+                    legend=st.session_state.get("legend6", True),
+                    width_cm=st.session_state.get("width6", 20),
+                    height_cm=st.session_state.get("height6", 10),
+                    dpi=st.session_state.get("dpi6", 300),
                 )
                 st.pyplot(fig)
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating plot: {e}")
         else:
-            st.info("Please load 'log2_data' and 'meta' in session state.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def cov_plot_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "org_data" in st.session_state:
+        available_levels.append("Protein")
+    if "org_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
-        outliers = st.checkbox("Show Outliers", value=False, key="toggle_outliersCO")
-        header = st.checkbox("Show Header", value=True, key="toggle_header7")
-        legend = st.checkbox("Show Legend", value=True, key="toggle_legend7")
+        if not available_levels:
+            st.info("No data available for plotting.")
+            return
+
+        st.checkbox("Show Outliers", value=False, key="outliers7")
+        st.checkbox("Show Header", value=True, key="header7")
+        st.checkbox("Show Legend", value=True, key="legend7")
 
         st.markdown("---")
-        st.selectbox("Level:", ["Protein", "Phosphosite"], key="level7")
+        level = st.selectbox("Level:", available_levels, key="level7")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth7")
-        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight7")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI7")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat7")
-
+        st.number_input("Width (cm):", value=20, key="width7")
+        st.number_input("Height (cm):", value=10, key="height7")
+        st.number_input("DPI:", value=300, key="dpi7")
+        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format7")
         st.download_button(
             "Download Plot",
             data=b"",
-            file_name=f"cov_plot.{file_format}",
+            file_name=f"cov_plot.png",
             key="downloadCovPlot"
         )
 
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="textPosition7")
+        st.selectbox("Position:", ["Above", "Below"], key="position7")
         st.text_area("Annotation Text:", key="text7")
-        st.button("Add", key="addText7")
-        st.button("Delete", key="deleteText7")
+        st.button("Add", key="add7")
+        st.button("Delete", key="delete7")
 
     with col2:
-        if "org_data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("org_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("org_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = cov_plot(
-                    data=st.session_state["org_data"],
-                    meta=st.session_state["meta"],
-                    outliers=outliers,
-                    header=header,
-                    legend=legend,
-                    width_cm=width_cm,
-                    height_cm=height_cm,
-                    dpi=dpi
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    outliers=st.session_state.get("outliers7", False),
+                    header=st.session_state.get("header7", True),
+                    legend=st.session_state.get("legend7", True),
+                    width_cm=st.session_state.get("width7", 20),
+                    height_cm=st.session_state.get("height7", 10),
+                    dpi=st.session_state.get("dpi7", 300),
                 )
                 st.pyplot(fig)
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating Coefficient of Variation plot: {e}")
         else:
-            st.info("Please load 'log2_data' and 'meta' in session state.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def principal_component_analysis_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "log2_data" in st.session_state:
+        available_levels.append("Protein")
+    if "log2_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
-        legend = st.checkbox("Show Legend", value=True, key="toggle_legend8")
-        header = st.checkbox("Show Header", value=True, key="toggle_header8")
+        if not available_levels:
+            st.info("No data available for PCA plot.")
+            return
+
+        st.checkbox("Show Legend", value=True, key="legend8")
+        st.checkbox("Show Header", value=True, key="header8")
+
         st.markdown("---")
-        st.selectbox("Level:", ["Protein", "Phosphosite"], key="level8")
+        level = st.selectbox("Level:", available_levels, key="level8")
+
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth8")
-        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight8")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI8")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat8")
-        st.download_button("Download Plot", data="", file_name=f"pca_plot.{file_format}", key="downloadPCAPlot")
+        st.number_input("Width (cm):", value=20, key="width8")
+        st.number_input("Height (cm):", value=10, key="height8")
+        st.number_input("DPI:", value=300, key="dpi8")
+        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format8")
+        st.download_button(
+            "Download Plot",
+            data=b"",
+            file_name=f"pca_plot.png",
+            key="downloadPCAPlot"
+        )
+
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="textPosition8")
+        st.selectbox("Position:", ["Above", "Below"], key="position8")
         st.text_area("Annotation Text:", key="text8")
-        st.button("Add", key="addText8")
-        st.button("Delete", key="deleteText8")
+        st.button("Add", key="add8")
+        st.button("Delete", key="delete8")
 
     with col2:
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("log2_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("log2_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = pca_plot(
-                    data=st.session_state["log2_data"],
-                    meta=st.session_state["meta"],
-                    header=header,
-                    legend=legend,
-                    width_cm=width_cm,
-                    height_cm=height_cm,
-                    dpi=dpi
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    header=st.session_state.get("header8", True),
+                    legend=st.session_state.get("legend8", True),
+                    width_cm=st.session_state.get("width8", 20),
+                    height_cm=st.session_state.get("height8", 10),
+                    dpi=st.session_state.get("dpi8", 300),
                 )
                 st.pyplot(fig)
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating PCA plot: {e}")
         else:
-            st.info("Please load 'log2_data' and 'meta' in session state.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def abundance_plot_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "org_data" in st.session_state:
+        available_levels.append("Protein")
+    if "org_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
-        legend = st.checkbox("Show Legend", value=True, key="legend9")
-        header = st.checkbox("Show Header", value=True, key="header9")
+        if not available_levels:
+            st.info("No data available for abundance plot.")
+            return
+
+        st.checkbox("Show Legend", value=True, key="legend9")
+        st.checkbox("Show Header", value=True, key="header9")
+
         st.markdown("---")
-        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level9")
+        level = st.selectbox("Level:", available_levels, key="level9")
+
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth9")
-        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight9")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI9")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat9")
-        st.download_button("Download Plot", data=b"", file_name=f"abundance_plot.{file_format}", key="downloadAbPlot9")
+        st.number_input("Width (cm):", value=20, key="width9")
+        st.number_input("Height (cm):", value=10, key="height9")
+        st.number_input("DPI:", value=300, key="dpi9")
+        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format9")
+        st.download_button(
+            "Download Plot",
+            data=b"",
+            file_name=f"abundance_plot.{st.session_state.get('format9','png')}",
+            key="downloadAbPlot9"
+        )
+
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="textPosition9")
-        st.text_area("Enter text:", key="text9", height=150)
+        st.selectbox("Position:", ["Above", "Below"], key="position9")
+        st.text_area("Enter Text:", key="text9", height=150)
         st.button("Add", key="addText9")
         st.button("Delete", key="deleteText9")
 
@@ -347,63 +461,97 @@ def abundance_plot_ui():
         protein_choices = st.session_state.get("protein_choices", [])
         selected_proteins = st.multiselect("Select Proteins:", options=protein_choices, key="protein9")
 
-        if "org_data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("org_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("org_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = abundance_plot(
-                    data=st.session_state["org_data"],
-                    meta=st.session_state["meta"],
+                    data=data_to_use,
+                    meta=meta_to_use,
                     workflow=level,
-                    width_cm=width_cm,
-                    height_cm=height_cm,
-                    dpi=dpi,
-                    legend=legend,
-                    header=header
+                    width_cm=st.session_state.get("width9", 20),
+                    height_cm=st.session_state.get("height9", 10),
+                    dpi=st.session_state.get("dpi9", 300),
+                    legend=st.session_state.get("legend9", True),
+                    header=st.session_state.get("header9", True)
                 )
                 st.pyplot(fig)
+                plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating abundance plot: {e}")
         else:
-            st.info("Please load 'org_data' and 'meta' in session state.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")
 
 
 def correlation_plot_ui():
     col1, col2 = st.columns([1, 2])
 
+    available_levels = []
+    if "org_data" in st.session_state:
+        available_levels.append("Protein")
+    if "org_data3" in st.session_state:
+        available_levels.append("Phosphosite")
+
     with col1:
-        st.session_state["change_display12"] = st.checkbox("Change Display",
-                                                           value=st.session_state.get("change_display12", False),
-                                                           key="changeDisplay12")
-        st.session_state["toggle_id12"] = st.checkbox("Toggle ID", value=st.session_state.get("toggle_id12", True),
-                                                      key="toggleId12")
+        if not available_levels:
+            st.info("No data available for correlation plot.")
+            return
+
+        change_display = st.checkbox(
+            "Change Display",
+            value=st.session_state.get("change_display12", False),
+            key="changeDisplay12"
+        )
+
+        toggle_id = st.checkbox(
+            "Toggle ID",
+            value=st.session_state.get("toggle_id12", True),
+            key="toggleId12"
+        )
 
         st.markdown("---")
-        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level12")
+        level = st.selectbox("Level:", available_levels, key="level12")
 
         st.markdown("---")
-        text_position = st.selectbox("Position:", options={"Above": "up", "Below": "down"}, index=0, key="textPosition12")
-        annotation_text = st.text_area("Annotation Text:", value="", height=100, key="text12")
+        st.header("Plot Size & Resolution")
+        width = st.number_input("Width (cm):", min_value=4, max_value=20, value=10, key="width12")
+        height = st.number_input("Height (cm):", min_value=4, max_value=20, value=8, key="height12")
+        dpi = st.number_input("DPI:", min_value=50, max_value=300, value=100, key="dpi12")
+
+        st.markdown("---")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition12")
+        st.text_area("Annotation Text:", value="", height=100, key="text12")
         st.button("Add", key="addText12")
         st.button("Delete", key="deleteText12")
 
-        width = st.number_input("Plot Width", min_value=4, max_value=20, value=10)
-        height = st.number_input("Plot Height", min_value=4, max_value=20, value=8)
-        dpi = st.number_input("Plot DPI", min_value=50, max_value=300, value=100)
-
     with col2:
-        if "org_data" in st.session_state and "meta" in st.session_state:
+        if level == "Protein":
+            data_to_use = st.session_state.get("org_data", None)
+            meta_to_use = st.session_state.get("meta", None)
+        elif level == "Phosphosite":
+            data_to_use = st.session_state.get("org_data3", None)
+            meta_to_use = st.session_state.get("meta2", None)
+
+        if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = corr_plot(
-                    st.session_state["org_data"],
-                    st.session_state["meta"],
+                    data_to_use,
+                    meta_to_use,
                     method=False,
-                    id=st.session_state.get("toggle_id12", True),
+                    id=toggle_id,  # use the variable from the checkbox directly
                     full_range=False,
                     width=width,
                     height=height,
                     dpi=dpi
                 )
                 st.pyplot(fig)
+                plt.close(fig)
             except Exception as e:
-                st.error(f"Error generating abundance plot: {e}")
+                st.error(f"Error generating correlation plot: {e}")
         else:
-            st.info("Please load 'org_data' and 'meta' in session state.")
+            st.info("Please upload the corresponding data and metadata to see the plot.")

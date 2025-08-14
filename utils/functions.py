@@ -544,25 +544,31 @@ def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20
 
 
 def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, height=8, dpi=100):
+    meta = meta.copy()
     meta['sample'] = meta['sample'].astype(str)
     meta['id'] = meta['sample'].apply(extract_id_or_number)
-    meta = meta.copy()
+
     if id:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row.name+1}\n ({row['id']})", axis=1)
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row['new_sample']} ({row['id']})", axis=1)
     else:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row.name+1}", axis=1)
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta.apply(lambda row: f"{row['condition']}_{row['new_sample']}", axis=1)
+
     rename_map = dict(zip(meta['sample'], meta['new_sample']))
     data = data.rename(columns=rename_map)
+
     annotated_columns = meta['new_sample'].tolist()
     data_filtered = data[annotated_columns]
+
     correlation_matrix = data_filtered.corr(method='pearson')
     distance_matrix = 1 - correlation_matrix
     linkage_matrix = linkage(squareform(distance_matrix), method='complete')
     ordered_indices = leaves_list(linkage_matrix)
     ordered_corr = correlation_matrix.iloc[ordered_indices, ordered_indices]
+
     vmin, vmax = (-1, 1) if full_range else (ordered_corr.min().min(), ordered_corr.max().max())
+
     fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
     cax = ax.matshow(ordered_corr, cmap='coolwarm', vmin=vmin, vmax=vmax)
     plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=45, ha='left')
