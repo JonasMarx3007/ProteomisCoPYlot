@@ -237,7 +237,6 @@ def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88
     return fig
 
 
-@st.cache_data
 def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
     import numpy as np
     from scipy.stats import gaussian_kde
