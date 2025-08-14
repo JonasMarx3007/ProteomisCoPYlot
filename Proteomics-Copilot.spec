@@ -41,6 +41,7 @@ a = Analysis(
     'sklearn',
     'sklearn.decomposition',
     'sklearn.utils._cython_blas',
+    'statsmodels.stats.multitest',
     ],
     hookspath=[],
     hooksconfig={},
