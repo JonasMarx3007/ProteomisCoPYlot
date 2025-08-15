@@ -65,99 +65,112 @@ def data_upload_ui():
 
 def data_annotation_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
         st.header("Normal Data Annotation")
-        meta_file = st.file_uploader(
-            "Upload Metadata (Protein Group)",
-            type=["csv", "xlsx", "txt", "tsv"],
-            key="upload_meta"
-        )
-        if meta_file is not None:
+        meta_file = st.file_uploader("Upload Metadata (Protein Group)", type=["csv", "xlsx", "txt", "tsv"], key="upload_meta")
+        if meta_file:
             try:
                 st.session_state["meta"] = read_data(meta_file)
             except Exception as e:
                 st.error(f"Failed to read metadata: {e}")
 
-        st.write("Is the data log2 transformed?")
-        col_a, col_b = st.columns(2)
+        if "meta" in st.session_state:
+            st.write("Is the data log2 transformed?")
+            col_a, col_b = st.columns(2)
+            if col_a.button("Yes", key="log2_yes"):
+                if "data" in st.session_state:
+                    st.session_state["org_data"] = inverse_log2_transform_data(st.session_state["data"], st.session_state["meta"])
+                    st.session_state["log2_data"] = st.session_state["data"]
+                else:
+                    st.error("No data loaded yet.")
+            if col_b.button("No", key="log2_no"):
+                if "data" in st.session_state:
+                    st.session_state["org_data"] = st.session_state["data"]
+                    st.session_state["log2_data"] = log2_transform_data(st.session_state["data"], st.session_state["meta"])
+                else:
+                    st.error("No data loaded yet.")
 
-        if col_a.button("Yes", key="log2_yes"):
-            if "data" in st.session_state:
-                st.session_state["org_data"] = inverse_log2_transform_data(st.session_state["data"], st.session_state.get("meta", pd.DataFrame()))
-                st.session_state["log2_data"] = st.session_state["data"]
-            else:
-                st.error("No data loaded yet.")
-
-        if col_b.button("No", key="log2_no"):
-            if "data" in st.session_state:
-                st.session_state["org_data"] = st.session_state["data"]
-                st.session_state["log2_data"] = log2_transform_data(st.session_state["data"], st.session_state.get("meta", pd.DataFrame()))
-            else:
-                st.error("No data loaded yet.")
-
-        st.markdown("---")
-        st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
-        st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
-        st.button("Apply Filter", key="apply_filter")
+            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
+            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
+            st.button("Apply Filter", key="apply_filter")
 
         st.markdown("---")
         st.header("Phospho Data Annotation")
-        meta_file2 = st.file_uploader(
-            "Upload Metadata (Phospho)",
-            type=["csv", "xlsx", "txt", "tsv"],
-            key="upload_meta2"
-        )
-        if meta_file2 is not None:
+        meta_file2 = st.file_uploader("Upload Metadata (Phospho)", type=["csv", "xlsx", "txt", "tsv"], key="upload_meta2")
+        if meta_file2:
             try:
                 st.session_state["meta2"] = read_data(meta_file2)
             except Exception as e:
                 st.error(f"Failed to read phospho metadata: {e}")
 
-        st.write("Is the data log2 transformed?")
-        col_c, col_d = st.columns(2)
+        if "meta2" in st.session_state:
+            st.write("Is the data log2 transformed?")
+            col_c, col_d = st.columns(2)
+            if col_c.button("Yes", key="log2_yes2"):
+                if "data3" in st.session_state:
+                    st.session_state["org_data3"] = inverse_log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
+                    st.session_state["log2_data3"] = st.session_state["data3"]
+                else:
+                    st.error("No phospho data loaded yet.")
+            if col_d.button("No", key="log2_no2"):
+                if "data3" in st.session_state:
+                    st.session_state["org_data3"] = st.session_state["data3"]
+                    st.session_state["log2_data3"] = log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
+                else:
+                    st.error("No phospho data loaded yet.")
 
-        if col_c.button("Yes", key="log2_yes2"):
-            if "data3" in st.session_state:
-                st.session_state["org_data3"] = inverse_log2_transform_data(st.session_state["data3"], st.session_state.get("meta2", pd.DataFrame()))
-                st.session_state["log2_data3"] = st.session_state["data3"]
-            else:
-                st.error("No phospho data loaded yet.")
-
-        if col_d.button("No", key="log2_no2"):
-            if "data3" in st.session_state:
-                st.session_state["org_data3"] = st.session_state["data3"]
-                st.session_state["log2_data3"] = log2_transform_data(st.session_state["data3"], st.session_state.get("meta2", pd.DataFrame()))
-            else:
-                st.error("No phospho data loaded yet.")
-
-        st.markdown("---")
-        st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
-        st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
-        st.button("Apply Filter", key="apply_filter2")
+            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
+            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
+            st.button("Apply Filter", key="apply_filter2")
 
         st.markdown("---")
         st.header("Color Scheme")
-        st.selectbox(
-            "Choose a Color Palette:",
-            ["Default", "Mario Document Input", "Default16", "Warm/Cold", "Black/Grey", "Yue7"],
-            key="color_palette"
-        )
+        st.selectbox("Choose a Color Palette:", ["Default", "Mario Document Input", "Default16", "Warm/Cold", "Black/Grey", "Yue7"], key="color_palette")
         st.button("Reload All Plots", key="reloadButton")
 
     with col2:
         st.subheader("Normal Data Condition Setup")
-        st.number_input("Number of Conditions:", value=1, min_value=1, key="num_conditions")
-        st.empty()
-        st.markdown("---")
-        st.subheader("Annotated Normal Data")
-        st.dataframe(st.session_state.get("log2_data", pd.DataFrame()), key="displayed_data")
-        st.markdown("---")
+        all_cols = list(st.session_state["data"].columns) if "data" in st.session_state else []
+        num_conditions = st.number_input("Number of Conditions:", value=1, min_value=1, key="num_conditions")
+        condition_meta_rows = []
+        used_cols = []
+        for i in range(int(num_conditions)):
+            condition_name = st.text_input(f"Condition {i+1} Name", key=f"cond_name_{i}")
+            remaining_cols = [c for c in all_cols if c not in used_cols]
+            selected_cols = st.multiselect(f"Columns for {condition_name}", remaining_cols, key=f"cond_cols_{i}")
+            used_cols += selected_cols
+            for col in selected_cols:
+                condition_meta_rows.append({"sample": col, "condition": condition_name})
+        if st.button("Generate Meta for Normal Data"):
+            if condition_meta_rows:
+                st.session_state["meta"] = pd.DataFrame(condition_meta_rows)
+
+        if "meta" in st.session_state:
+            st.subheader("Annotated Normal Data")
+            st.dataframe(st.session_state.get("log2_data", pd.DataFrame()), key="displayed_data")
+            st.dataframe(st.session_state["meta"], key="displayed_meta")
+
         st.subheader("Phospho Data Condition Setup")
-        st.number_input("Number of Conditions:", value=1, min_value=1, key="num_conditions2")
-        st.empty()
-        st.markdown("---")
-        st.subheader("Annotated Phospho Data")
-        st.dataframe(st.session_state.get("log2_data3", pd.DataFrame()), key="displayed_data2")
+        all_cols2 = list(st.session_state["data3"].columns) if "data3" in st.session_state else []
+        num_conditions2 = st.number_input("Number of Conditions:", value=1, min_value=1, key="num_conditions2")
+        condition_meta_rows2 = []
+        used_cols2 = []
+        for i in range(int(num_conditions2)):
+            condition_name2 = st.text_input(f"Phospho Condition {i+1} Name", key=f"cond_name2_{i}")
+            remaining_cols2 = [c for c in all_cols2 if c not in used_cols2]
+            selected_cols2 = st.multiselect(f"Columns for {condition_name2}", remaining_cols2, key=f"cond_cols2_{i}")
+            used_cols2 += selected_cols2
+            for col in selected_cols2:
+                condition_meta_rows2.append({"sample": col, "condition": condition_name2})
+        if st.button("Generate Meta for Phospho Data"):
+            if condition_meta_rows2:
+                st.session_state["meta2"] = pd.DataFrame(condition_meta_rows2)
+
+        if "meta2" in st.session_state:
+            st.subheader("Annotated Phospho Data")
+            st.dataframe(st.session_state.get("log2_data3", pd.DataFrame()), key="displayed_data2")
+            st.dataframe(st.session_state["meta2"], key="displayed_meta2")
 
 
 def impute_data_ui():
