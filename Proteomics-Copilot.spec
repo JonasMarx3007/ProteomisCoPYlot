@@ -10,7 +10,7 @@ datas = [
     (os.path.join(project_dir, "app.py"), "."),
     (os.path.join(project_dir, "ui"), "ui"),
     (os.path.join(project_dir, "utils"), "utils"),
-    (os.path.join(project_dir, "favicon.ico"), "."),
+    (os.path.join(project_dir, "CopilotIcoV1.ico"), "."),
 ] + copy_metadata('streamlit')
 
 streamlit_path = os.path.dirname(streamlit.__file__)
