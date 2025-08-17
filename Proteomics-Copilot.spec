@@ -81,5 +81,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='receptor_icon.ico',
+    icon='CopilotIcoV1.ico',
 )
