@@ -10,7 +10,7 @@ datas = [
     (os.path.join(project_dir, "app.py"), "."),
     (os.path.join(project_dir, "ui"), "ui"),
     (os.path.join(project_dir, "utils"), "utils"),
-    (os.path.join(project_dir, "CopilotIcoV1.ico"), "."),
+    (os.path.join(project_dir, "favicon.ico"), "."),
 ] + copy_metadata('streamlit')
 
 streamlit_path = os.path.dirname(streamlit.__file__)
@@ -81,5 +81,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join(project_dir, "CopilotIcoV1.ico"),
+    icon="favicon.ico",
 )

@@ -11,7 +11,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 def main():
-    favicon_path = resource_path("CopilotIcoV1.ico")
+    favicon_path = resource_path("favicon.ico")
     st.set_page_config(page_title="Proteomics Copilot", layout="wide", page_icon=favicon_path)
     st.title("Proteomics Copilot")
     render_main_tabs()
