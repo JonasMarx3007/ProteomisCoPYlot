@@ -72,7 +72,7 @@ exe = EXE(
     debug=False,                        #Debug
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,                       # Console
@@ -81,5 +81,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='CopilotIcoV1.ico',
+    icon=os.path.join(project_dir, "CopilotIcoV1.ico"),
 )
