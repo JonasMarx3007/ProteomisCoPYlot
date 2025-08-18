@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.functions import *
+from pathlib import Path
 
 #MAIN
 def data_ui():
@@ -204,10 +205,17 @@ def impute_data_ui():
 def distribution_ui():
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.selectbox("Level:", ["Protein", "Phosphosite"], key="level4.5")
+        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level4.5")
     with col2:
         st.subheader("QQ Norm Plot")
-        st.empty()
+        fig = qqnorm_plot(st.session_state["log2_data"], st.session_state["meta"])
+        st.pyplot(fig)
+
+        assets_path = Path("assets")
+        st.image([
+            str(assets_path / "qqnorm.jpg"),
+            str(assets_path / "qqnorm_txt.jpg")
+        ])
 
 
 def verification_ui():

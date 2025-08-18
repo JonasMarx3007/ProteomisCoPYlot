@@ -14,6 +14,7 @@ import plotly.graph_objects as go
 from gprofiler import GProfiler
 import plotly.express as px
 import streamlit as st
+import scipy.stats as stats
 
 #BASIC AND DATA FUNCTIONS
 def rename_cols(df):
@@ -136,6 +137,27 @@ def filter_data(data, meta, num, filterops="per group"):
         rows_to_keep = mask.any(axis=1)
 
     return data.loc[rows_to_keep]
+
+
+@st.cache_data
+def qqnorm_plot(data, meta):
+    sample_columns = meta['sample'].tolist()
+    data_values = data[sample_columns].replace(0, np.nan)
+
+    values_vector = data_values.values.flatten()
+    values_vector = values_vector[~np.isnan(values_vector)]
+    values_vector = values_vector[values_vector > 0]
+
+    if len(values_vector) > 100_000:
+        np.random.seed(187)
+        values_vector = np.random.choice(values_vector, 100_000, replace=False)
+
+    fig, ax = plt.subplots()
+    stats.probplot(values_vector, plot=ax)
+    ax.set_title("QQ Plot")
+    ax.set_xlabel("Theoretical Quantiles")
+    ax.set_ylabel("Sample Quantiles")
+    return fig
 
 
 #QC FUNCTIONS
