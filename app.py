@@ -12,8 +12,8 @@ def resource_path(relative_path):
 
 def main():
     favicon_path = resource_path("favicon.ico")
-    st.set_page_config(page_title="Proteomics Copilot", layout="wide", page_icon=favicon_path)
-    st.title("Proteomics Copilot")
+    st.set_page_config(page_title="Proteomics CoPYlot", layout="wide", page_icon=favicon_path)
+    st.title("Proteomics CoPYlot")
     render_main_tabs()
 
 if __name__ == "__main__":

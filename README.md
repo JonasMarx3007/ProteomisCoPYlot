@@ -1,1 +1,1 @@
-Python Version of Copilot
+Python Version of Proteomics Copilot

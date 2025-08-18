@@ -69,7 +69,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Proteomics-Copilot',
+    name='Proteomics-CoPYlot',
     debug=False,                        #Debug
     bootloader_ignore_signals=False,
     strip=False,
