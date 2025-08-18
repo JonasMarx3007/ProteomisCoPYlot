@@ -121,12 +121,19 @@ def data_annotation_ui():
                 else:
                     st.error("No data loaded yet.")
 
-            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
-            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
-            st.button("Apply Filter", key="apply_filter")
+            filter_num = st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
+            filterop = st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
+            if st.button("Apply Filter", key="apply_filter"):
+                if "log2_data" in st.session_state:
+                    before_count = st.session_state["log2_data"].shape[0]
+                    st.session_state["filtered_log2_data"] = filter_data(st.session_state["log2_data"], st.session_state["meta"], filter_num, filterop)
+                    after_count = st.session_state["filtered_log2_data"].shape[0]
+                    st.success(f"Filtered Normal Data: {before_count} → {after_count} proteins")
+                else:
+                    st.error("No log2 data available for filtering.")
 
             st.subheader("Annotated Normal Data (Log2)")
-            st.dataframe(st.session_state.get("log2_data", pd.DataFrame()), key="displayed_data")
+            st.dataframe(st.session_state.get("filtered_log2_data", st.session_state.get("log2_data", pd.DataFrame())), key="displayed_data")
 
         st.subheader("Phospho Data Condition Setup")
         all_cols2 = list(st.session_state["data3"].columns) if "data3" in st.session_state else []
@@ -160,12 +167,19 @@ def data_annotation_ui():
                 else:
                     st.error("No phospho data loaded yet.")
 
-            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
-            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
-            st.button("Apply Filter", key="apply_filter2")
+            filter_num2 = st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
+            filterop2 = st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
+            if st.button("Apply Filter", key="apply_filter2"):
+                if "log2_data3" in st.session_state:
+                    before_count = st.session_state["log2_data3"].shape[0]
+                    st.session_state["filtered_log2_data3"] = filter_data(st.session_state["log2_data3"], st.session_state["meta2"], filter_num2, filterop2)
+                    after_count = st.session_state["filtered_log2_data3"].shape[0]
+                    st.success(f"Filtered Phospho Data: {before_count} → {after_count} proteins")
+                else:
+                    st.error("No log2 phospho data available for filtering.")
 
             st.subheader("Annotated Phospho Data (Log2)")
-            st.dataframe(st.session_state.get("log2_data3", pd.DataFrame()), key="displayed_data2")
+            st.dataframe(st.session_state.get("filtered_log2_data3", st.session_state.get("log2_data3", pd.DataFrame())), key="displayed_data2")
 
 
 def impute_data_ui():

@@ -99,7 +99,7 @@ def protein_line_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.checkbox("Toggle IDs", value=True, key="toggle_id18")
+        st.checkbox("Toggle IDs", value=False, key="toggle_id18")
         st.checkbox("Toggle Header", value=True, key="toggle_header18")
         st.checkbox("Toggle Legend", value=True, key="toggle_legend18")
 
@@ -165,7 +165,6 @@ def protein_box_ui():
 
     col1, col2 = st.columns([1, 2])
 
-    # --- Left panel: controls ---
     with col1:
         st.checkbox("Toggle Header", value=True, key="toggle_header17")
         st.checkbox("Toggle Legend", value=True, key="toggle_legend17")

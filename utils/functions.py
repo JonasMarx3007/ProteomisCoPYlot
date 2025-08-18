@@ -115,6 +115,29 @@ def inverse_log2_transform_data(data: pd.DataFrame, meta: pd.DataFrame) -> pd.Da
     return combined_data
 
 
+@st.cache_data
+def filter_data(data, meta, num, filterops="per group"):
+    meta = meta.copy()
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+
+    annotated_columns = meta['sample'].tolist()
+    data_filtered = data[annotated_columns].copy()
+
+    conditions = meta['condition'].unique()
+
+    mask = pd.DataFrame(False, index=data_filtered.index, columns=conditions)
+    for cond in conditions:
+        cols = meta.loc[meta['condition'] == cond, 'sample']
+        mask[cond] = (data_filtered[cols].notna().sum(axis=1) >= num)
+
+    if filterops == "per group":
+        rows_to_keep = mask.all(axis=1)
+    else:
+        rows_to_keep = mask.any(axis=1)
+
+    return data.loc[rows_to_keep]
+
+
 #QC FUNCTIONS
 @st.cache_data
 def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
