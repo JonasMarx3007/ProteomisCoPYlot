@@ -57,12 +57,16 @@ Install via pip:
 pip install streamlit matplotlib pandas numpy scikit-learn statsmodels plotly gprofiler-official
 ```
 
+---
+
 ## Usage
 Run the locally using Streamlit:
 ```bash
 streamlit run app.py
 ```
 Open http://localhost:8501 in your browser to interact with the application. Or alternatively run the run_app.py.
+
+---
 
 ## License
 This project is licensed under the **MIT License** — see the LICENSE file for details.
