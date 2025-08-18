@@ -4,6 +4,7 @@ from ui.i2_qc_pipline_ui import *
 from ui.i3_statistical_analysis_ui import *
 from ui.i4_single_protein_ui import *
 from ui.i5_phospho_specific_ui import *
+from ui.i6_tables import *
 
 def render_main_tabs():
     if st.sidebar.button("Stop App"):
@@ -11,7 +12,7 @@ def render_main_tabs():
         time.sleep(3)
         os._exit(0)
 
-    main_tabs = st.tabs(["Data", "QC Pipeline", "Statistical Analysis", "Single Protein", "Phospho-specific"])
+    main_tabs = st.tabs(["Data", "QC Pipeline", "Statistical Analysis", "Single Protein", "Phospho-specific", "Tables"])
 
     with main_tabs[0]:
         data_ui()
@@ -27,3 +28,6 @@ def render_main_tabs():
 
     with main_tabs[4]:
         phospho_specific_ui()
+
+    with main_tabs[5]:
+        tables_ui()

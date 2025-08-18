@@ -75,27 +75,6 @@ def data_annotation_ui():
             except Exception as e:
                 st.error(f"Failed to read metadata: {e}")
 
-        if "meta" in st.session_state:
-            st.write("Is the data log2 transformed?")
-            col_a, col_b = st.columns(2)
-            if col_a.button("Yes", key="log2_yes"):
-                if "data" in st.session_state:
-                    st.session_state["org_data"] = inverse_log2_transform_data(st.session_state["data"], st.session_state["meta"])
-                    st.session_state["log2_data"] = st.session_state["data"]
-                else:
-                    st.error("No data loaded yet.")
-            if col_b.button("No", key="log2_no"):
-                if "data" in st.session_state:
-                    st.session_state["org_data"] = st.session_state["data"]
-                    st.session_state["log2_data"] = log2_transform_data(st.session_state["data"], st.session_state["meta"])
-                else:
-                    st.error("No data loaded yet.")
-
-            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
-            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
-            st.button("Apply Filter", key="apply_filter")
-
-        st.markdown("---")
         st.header("Phospho Data Annotation")
         meta_file2 = st.file_uploader("Upload Metadata (Phospho)", type=["csv", "xlsx", "txt", "tsv"], key="upload_meta2")
         if meta_file2:
@@ -103,26 +82,6 @@ def data_annotation_ui():
                 st.session_state["meta2"] = read_data(meta_file2)
             except Exception as e:
                 st.error(f"Failed to read phospho metadata: {e}")
-
-        if "meta2" in st.session_state:
-            st.write("Is the data log2 transformed?")
-            col_c, col_d = st.columns(2)
-            if col_c.button("Yes", key="log2_yes2"):
-                if "data3" in st.session_state:
-                    st.session_state["org_data3"] = inverse_log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
-                    st.session_state["log2_data3"] = st.session_state["data3"]
-                else:
-                    st.error("No phospho data loaded yet.")
-            if col_d.button("No", key="log2_no2"):
-                if "data3" in st.session_state:
-                    st.session_state["org_data3"] = st.session_state["data3"]
-                    st.session_state["log2_data3"] = log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
-                else:
-                    st.error("No phospho data loaded yet.")
-
-            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
-            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
-            st.button("Apply Filter", key="apply_filter2")
 
         st.markdown("---")
         st.header("Color Scheme")
@@ -147,9 +106,27 @@ def data_annotation_ui():
                 st.session_state["meta"] = pd.DataFrame(condition_meta_rows)
 
         if "meta" in st.session_state:
-            st.subheader("Annotated Normal Data")
+            st.write("Is the data log2 transformed?")
+            col_a, col_b = st.columns(2)
+            if col_a.button("Yes", key="log2_yes"):
+                if "data" in st.session_state:
+                    st.session_state["org_data"] = inverse_log2_transform_data(st.session_state["data"], st.session_state["meta"])
+                    st.session_state["log2_data"] = st.session_state["data"]
+                else:
+                    st.error("No data loaded yet.")
+            if col_b.button("No", key="log2_no"):
+                if "data" in st.session_state:
+                    st.session_state["org_data"] = st.session_state["data"]
+                    st.session_state["log2_data"] = log2_transform_data(st.session_state["data"], st.session_state["meta"])
+                else:
+                    st.error("No data loaded yet.")
+
+            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
+            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
+            st.button("Apply Filter", key="apply_filter")
+
+            st.subheader("Annotated Normal Data (Log2)")
             st.dataframe(st.session_state.get("log2_data", pd.DataFrame()), key="displayed_data")
-            st.dataframe(st.session_state["meta"], key="displayed_meta")
 
         st.subheader("Phospho Data Condition Setup")
         all_cols2 = list(st.session_state["data3"].columns) if "data3" in st.session_state else []
@@ -168,9 +145,27 @@ def data_annotation_ui():
                 st.session_state["meta2"] = pd.DataFrame(condition_meta_rows2)
 
         if "meta2" in st.session_state:
-            st.subheader("Annotated Phospho Data")
+            st.write("Is the data log2 transformed?")
+            col_c, col_d = st.columns(2)
+            if col_c.button("Yes", key="log2_yes2"):
+                if "data3" in st.session_state:
+                    st.session_state["org_data3"] = inverse_log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
+                    st.session_state["log2_data3"] = st.session_state["data3"]
+                else:
+                    st.error("No phospho data loaded yet.")
+            if col_d.button("No", key="log2_no2"):
+                if "data3" in st.session_state:
+                    st.session_state["org_data3"] = st.session_state["data3"]
+                    st.session_state["log2_data3"] = log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
+                else:
+                    st.error("No phospho data loaded yet.")
+
+            st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
+            st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
+            st.button("Apply Filter", key="apply_filter2")
+
+            st.subheader("Annotated Phospho Data (Log2)")
             st.dataframe(st.session_state.get("log2_data3", pd.DataFrame()), key="displayed_data2")
-            st.dataframe(st.session_state["meta2"], key="displayed_meta2")
 
 
 def impute_data_ui():
