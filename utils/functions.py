@@ -977,6 +977,19 @@ def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc
     return fig
 
 
+#PEPTIDE
+def rt_plot():
+    pass
+
+
+def modification_plot():
+    pass
+
+
+def missed_cleavage_plot():
+    pass
+
+
 #SINGLE PROTEIN
 @st.cache_data
 def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, legend=True,
