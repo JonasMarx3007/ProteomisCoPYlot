@@ -1128,3 +1128,91 @@ def boxplot_int_single(data, meta, protein, outliers=False, header=True, legend=
 
 
 #Phospho-specific
+@st.cache_data
+def phossite_coverage_plot(data, meta, id=False, header=True, legend=True, width=20, height=10, dpi=300):
+    conditions = meta["condition"].unique()
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].apply(lambda x: extract_id_or_number(x))
+
+    if id:
+        meta["new_sample"] = meta.groupby("condition").cumcount().astype(str)
+        meta["new_sample"] = meta["condition"].astype(str) + "_" + meta["new_sample"] + "\n(" + meta["id"].astype(str) + ")"
+    else:
+        meta["new_sample"] = meta.groupby("condition").cumcount().astype(str)
+        meta["new_sample"] = meta["condition"].astype(str) + "_" + meta["new_sample"]
+
+    rename_dict = dict(zip(meta["sample"], meta["new_sample"]))
+    data = data.rename(columns=rename_dict)
+    annotated_columns = meta["new_sample"].tolist()
+
+    data_classI = data.loc[data["PTM_localization"] >= 0.75, annotated_columns]
+    data_notclassI = data.loc[data["PTM_localization"] < 0.75, annotated_columns]
+
+    count_classI = data_classI.notna().sum()
+    count_notclassI = data_notclassI.notna().sum()
+
+    plot_data = pd.DataFrame({
+        "sample": annotated_columns * 2,
+        "PTM_localization": ["Class I"] * len(annotated_columns) + ["Not Class I"] * len(annotated_columns),
+        "count": list(count_classI) + list(count_notclassI)
+    })
+
+    plot_data["sample"] = pd.Categorical(plot_data["sample"], categories=meta["new_sample"], ordered=True)
+
+    plot_title = "Phosphosites per sample" if header else ""
+    y_label = "Number of phosphosites" if header else "Number"
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    classI_data = plot_data[plot_data["PTM_localization"] == "Class I"]
+    notclassI_data = plot_data[plot_data["PTM_localization"] == "Not Class I"]
+
+    x = range(len(annotated_columns))
+    ax.bar(x, classI_data["count"], label="Class I", color="blue")
+    ax.bar(x, notclassI_data["count"], bottom=classI_data["count"], label="Not Class I", color="orange")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(meta["new_sample"], rotation=90, fontsize=5)
+    ax.set_xlabel("Sample")
+    ax.set_ylabel(y_label)
+    ax.set_title(plot_title)
+    if legend:
+        ax.legend()
+    plt.tight_layout()
+    return fig
+
+
+@st.cache_data
+def simple_phos_site_plot(data, filter_value=0, width=6, height=4, dpi=100):
+    data = data[data["PTM_localization"] >= filter_value].copy()
+
+    phosprot = data["Protein_group"].nunique()
+    data["Seq"] = data["UPD_seq"].astype(str).str.replace(r"[^\w]", "", regex=True).str.upper()
+    phospep = data["Seq"].nunique()
+    phossite = data["PTM_Collapse_key"].nunique()
+
+    df = pd.DataFrame({
+        "term": ["Phosphoproteins", "Phosphopeptides", "Phosphosites"],
+        "count": [phosprot, phospep, phossite]
+    })
+
+    df = df.sort_values("count", ascending=False)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+
+    ax.barh(df["term"], df["count"], color="skyblue")
+    for i, v in enumerate(df["count"]):
+        ax.text(v + max(df["count"]) * 0.01, i, str(v), color="black", fontweight="bold", va="center")
+
+    ax.invert_yaxis()
+    ax.set_xticks([])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(True)
+    ax.spines["bottom"].set_visible(True)
+    ax.grid(False)
+
+    plt.tight_layout()
+    return fig
