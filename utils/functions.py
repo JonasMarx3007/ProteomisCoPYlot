@@ -15,8 +15,18 @@ from gprofiler import GProfiler
 import plotly.express as px
 import streamlit as st
 import scipy.stats as stats
+from pathlib import Path
+import sys
 
 #BASIC AND DATA FUNCTIONS
+def resource_path(relative_path: str) -> str:
+    if hasattr(sys, "_MEIPASS"):
+        base_path = Path(sys._MEIPASS)
+    else:
+        base_path = Path(__file__).parent
+    return str(base_path / relative_path)
+
+
 def rename_cols(df):
     rename_map = {
         "Run": "File.Name",

@@ -1,6 +1,4 @@
-import streamlit as st
 from utils.functions import *
-from pathlib import Path
 
 #MAIN
 def data_ui():
@@ -208,13 +206,21 @@ def distribution_ui():
         level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level4.5")
     with col2:
         st.subheader("QQ Norm Plot")
-        fig = qqnorm_plot(st.session_state["log2_data"], st.session_state["meta"])
-        st.pyplot(fig)
 
-        assets_path = Path("assets")
+        if level == "Protein":
+            log_data_key = "log2_data"
+        else:
+            log_data_key = "log2_data3"
+
+        if log_data_key in st.session_state and st.session_state[log_data_key] is not None:
+            fig = qqnorm_plot(st.session_state[log_data_key], st.session_state["meta"])
+            st.pyplot(fig)
+        else:
+            st.info(f"{log_data_key} is not defined yet.")
+
         st.image([
-            str(assets_path / "qqnorm.jpg"),
-            str(assets_path / "qqnorm_txt.jpg")
+            resource_path("assets/qqnorm.jpg"),
+            resource_path("assets/qqnorm_txt.jpg")
         ])
 
 
