@@ -218,10 +218,11 @@ def distribution_ui():
         else:
             st.info(f"{log_data_key} is not defined yet.")
 
-        st.image([
-            resource_path("assets/qqnorm.jpg"),
-            resource_path("assets/qqnorm_txt.jpg")
-        ])
+        assets_dir = os.path.join(os.path.dirname(__file__), "..", "assets")
+        img1 = os.path.join(assets_dir, "qqnorm.jpg")
+        img2 = os.path.join(assets_dir, "qqnorm_txt.jpg")
+
+        st.image([img1, img2])
 
 
 def verification_ui():
