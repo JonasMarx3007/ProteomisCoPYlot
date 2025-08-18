@@ -1,16 +1,16 @@
 # Proteomics CoPYlot (Python Version)
 
-Proteomics CoPYlot is a **Python-based tool for proteomics data analysis and visualization**, designed to simplify common workflows and provide interactive plots and light statistics for your experimental results. It can be run **locally** as a Python executable or accessed via the **web** at [proteomics-data.com](https://proteomics-data.com).
+Proteomics CoPYlot is a **Python-based tool for proteomics data analysis and visualization**, designed to simplify common workflows and provide interactive plots and light statistics for your experimental results. It can be run **locally** as a Python script, executable or accessed via the **web** at [proteomics-data.com](https://proteomics-data.com).
 
 ---
 
 ## Features
 
 - Upload and analyze **Spectronaut, DIA-NN, or MaxQuant output files**  
-- Generate **quality control (QC) plots**: retention times, modifications, missed cleavages, and more  
-- **Interactive visualizations** with adjustable plot size, resolution, and headers  
-- Export **publication-ready figures** directly from the interface  
-- Lightweight **statistical summaries** for quick assessment of datasets  
+- Generate **quality control (QC) plots**: coverage, missing values, intensity distribution, and more  
+- **Interactive visualizations** with adjustable plot size, resolution, and hover-names
+- Export **presentation-ready figures** directly from the interface  
+- Simple **statistical summaries** for quick assessment of datasets  
 
 ---
 
@@ -31,8 +31,8 @@ pip install -r requirements.txt
 
 1. Upload your proteomics dataset (TSV or compatible format)  
 2. Explore proteins and phosphosites interactively in the **Streamlit interface**  
-3. Generate **quality control plots** with customizable size, resolution, and headers  
-4. Export figures for reports or publications  
+3. Generate **quality control plots** with customizable details  
+4. Export figures for reports or presentations
 
 ---
 
