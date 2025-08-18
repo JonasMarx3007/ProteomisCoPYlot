@@ -17,8 +17,31 @@ import streamlit as st
 import scipy.stats as stats
 from pathlib import Path
 import sys
+import matplotlib.ticker as mtick
 
 #BASIC AND DATA FUNCTIONS
+def make_columns_unique(df):
+    cols = pd.Series(df.columns)
+    for dup in cols[cols.duplicated()].unique():
+        dup_idx = cols[cols == dup].index.tolist()
+        for i, idx in enumerate(dup_idx[1:], start=1):
+            cols[idx] = f"{cols[idx]}_{i}"
+    df.columns = cols
+    return df
+
+
+def sanitize_dataframe(df):
+    df = df.copy()
+    df = make_columns_unique(df)  # Make column names unique first
+    for col in df.columns:
+        if isinstance(df[col], pd.Series):
+            if not pd.api.types.is_numeric_dtype(df[col]):
+                df[col] = df[col].astype(str)
+        else:
+            df[col] = df[col].astype(str)
+    return df
+
+
 def resource_path(relative_path: str) -> str:
     if hasattr(sys, "_MEIPASS"):
         base_path = Path(sys._MEIPASS)
@@ -978,16 +1001,165 @@ def volcano_plot_sim(data, meta, condition1, condition2, in_pval=0.05, in_log2fc
 
 
 #PEPTIDE
-def rt_plot():
-    pass
+@st.cache_data
+def rt_vs_pred_rt_plot(data, method="Hexbin Plot", add_line=False, bins=1000, header=True, width=8, height=6, dpi=100):
+    x = data['Predicted.RT']
+    y = data['RT']
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+
+    if method == "Scatter Plot":
+        if len(data) > 100000:
+            data = data.sample(n=100000, random_state=69)
+        ax.scatter(data['Predicted.RT'], data['RT'], alpha=0.2, s=1)
+    elif method == "Density Plot":
+        from matplotlib.colors import LogNorm
+        hb = ax.hist2d(data['Predicted.RT'], data['RT'], bins=200, norm=LogNorm())
+        plt.colorbar(hb[3], ax=ax)
+    elif method == "Hexbin Plot":
+        hb = ax.hexbin(data['Predicted.RT'], data['RT'], gridsize=bins, cmap='Blues')
+        plt.colorbar(hb, ax=ax)
+
+    if add_line:
+        ax.plot([x.min(), x.max()], [x.min(), x.max()], ls='--', color='red')
+
+    ax.set_xlabel("Predicted RT")
+    ax.set_ylabel("Actual RT")
+    if header:
+        ax.set_title("Retention Time Plot")
+
+    return fig
 
 
-def modification_plot():
-    pass
+
+@st.cache_data
+def modification_plot(data, meta, id=True, header=True, width=10, height=6, dpi=100):
+    data_names = data['File.Name'].unique()
+    meta['sample'] = meta['sample'].apply(lambda s: s if s in data_names else s)
+
+    df_wide = data.pivot_table(index='File.Name', columns='Modified.Sequence',
+                               values='Precursor.Quantity', aggfunc='max', fill_value=np.nan).T
+    df_wide.columns = [extract_id_or_number(c) for c in df_wide.columns]
+    df_wide.index.name = 'Modified.Sequence'
+
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+    if id:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'] + "\n(" + meta['id'] + ")"
+    else:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample']
+
+    rename_dict = dict(zip(meta['id'], meta['new_sample']))
+    df_wide.rename(columns=rename_dict, inplace=True)
+    annotated_cols = [c for c in df_wide.columns if c in meta['new_sample']]
+    df_filtered = df_wide[annotated_cols]
+
+    def get_mod_count(df, pattern):
+        mask = df.index.str.contains(pattern)
+        sub_df = df[mask].fillna(0).applymap(lambda x: 1 if x>0 else 0)
+        return sub_df.sum()
+
+    col_sums_carb = get_mod_count(df_filtered, "UniMod:4|Carbamidomethyl")
+    col_sums_oxi = get_mod_count(df_filtered, "UniMod:35|Oxidation")
+    col_sums_ace = get_mod_count(df_filtered, "UniMod:1|Acetyl")
+
+    plot_data = pd.DataFrame({
+        'Sample': list(col_sums_carb.index)*3,
+        'Count': pd.concat([col_sums_carb, col_sums_oxi, col_sums_ace]).values,
+        'Modification': ['Carbamylation']*len(col_sums_carb) + ['Oxidation']*len(col_sums_carb) + ['Acetylation']*len(col_sums_carb)
+    })
+    plot_data = plot_data[plot_data['Count']>0]
+
+    samples_order = meta['new_sample'].tolist()
+    plot_data['Sample'] = pd.Categorical(plot_data['Sample'], categories=samples_order, ordered=True)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    modifications = plot_data['Modification'].unique()
+    colors = {"Carbamylation":"blue", "Oxidation":"red", "Acetylation":"green"}
+
+    width_bar = 0.2
+    positions = np.arange(len(samples_order))
+    for i, mod in enumerate(modifications):
+        subset = plot_data[plot_data['Modification']==mod]
+        counts = subset.set_index('Sample').reindex(samples_order)['Count'].fillna(0)
+        ax.bar(positions + i*width_bar, counts, width=width_bar, label=mod, color=colors[mod])
+
+    ax.set_xticks(positions + width_bar)
+    ax.set_xticklabels(samples_order, rotation=90)
+    ax.set_ylabel("Number of modified peptides")
+    if header:
+        ax.set_title("Modifications per sample")
+    ax.legend()
+    plt.tight_layout()
+    return fig
 
 
-def missed_cleavage_plot():
-    pass
+@st.cache_data
+def missed_cleavage_plot(data, meta, id=True, text=True, text_size=8, header=True, width=10, height=6, dpi=100):
+    data_names = data['File.Name'].unique()
+    meta['sample'] = meta['sample'].apply(lambda s: s if s in data_names else s)
+
+    df_wide = data.pivot_table(index='File.Name', columns='Stripped.Sequence',
+                               values='Precursor.Quantity', aggfunc='max', fill_value=np.nan).T
+    df_wide.columns = [extract_id_or_number(c) for c in df_wide.columns]
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+
+    if id:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'] + "\n(" + meta['id'] + ")"
+    else:
+        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample']
+
+    rename_dict = dict(zip(meta['id'], meta['new_sample']))
+    df_wide.rename(columns=rename_dict, inplace=True)
+    annotated_cols = [c for c in df_wide.columns if c in meta['new_sample']]
+    df_filtered = df_wide[annotated_cols]
+
+    def count_missed(seq):
+        count = seq.count('R') + seq.count('K') - 1
+        return max(0, count)
+
+    rk_counts = [count_missed(seq) for seq in df_filtered.index]
+    for col in df_filtered.columns:
+        df_filtered[col] = df_filtered[col].notna() * rk_counts
+
+    plot_data = df_filtered.reset_index().melt(id_vars='Stripped.Sequence', var_name='Sample', value_name='Count')
+    plot_data = plot_data.dropna(subset=['Count'])
+    plot_data_grouped = plot_data.groupby(['Sample','Count']).size().reset_index(name='Occurrences')
+    plot_data_grouped['Total'] = plot_data_grouped.groupby('Sample')['Occurrences'].transform('sum')
+    plot_data_grouped['Percentage'] = plot_data_grouped['Occurrences'] / plot_data_grouped['Total'] * 100
+
+    samples_order = meta['new_sample'].tolist()
+    plot_data_grouped['Sample'] = pd.Categorical(plot_data_grouped['Sample'], categories=samples_order, ordered=True)
+    plot_data_grouped['Count'] = plot_data_grouped['Count'].astype(int)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    counts_sorted = sorted(plot_data_grouped['Count'].unique(), reverse=True)
+    bottom = np.zeros(len(samples_order))
+
+    for c in counts_sorted:
+        subset = plot_data_grouped[plot_data_grouped['Count']==c].set_index('Sample').reindex(samples_order)['Percentage'].fillna(0)
+        ax.bar(samples_order, subset, bottom=bottom, label=str(c))
+        bottom += subset
+
+    ax.set_ylabel("Percentage of peptides with missed cleavage (%)")
+    ax.set_ylim(0, max(bottom)*1.05)
+    ax.yaxis.set_major_formatter(mtick.PercentFormatter())
+
+    if text:
+        single_mc = plot_data_grouped[plot_data_grouped['Count']==1].set_index('Sample').reindex(samples_order)['Percentage'].fillna(0)
+        for i, val in enumerate(single_mc):
+            if val > 0:
+                ax.text(i, bottom[i]*0.99, f"{val:.1f}%", ha='center', va='bottom', color='white', fontsize=text_size)
+
+    if header:
+        ax.set_title("Missed cleavages per sample")
+    ax.set_xticklabels(samples_order, rotation=90)
+    ax.legend(title='Number')
+    plt.tight_layout()
+    return fig
 
 
 #SINGLE PROTEIN

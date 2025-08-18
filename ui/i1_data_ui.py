@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
-from utils.functions import read_data, inverse_log2_transform_data, log2_transform_data, filter_data, qqnorm_plot, first_digit_distribution, data_pattern_structure
+from utils.functions import read_data, inverse_log2_transform_data, log2_transform_data, filter_data, qqnorm_plot, first_digit_distribution, data_pattern_structure, sanitize_dataframe
 
 #MAIN
 def data_ui():
@@ -43,7 +43,7 @@ def data_upload_ui():
     with col2:
         st.subheader("Protein Level Data Preview")
         if st.session_state.get("file"):
-            st.session_state["data"] = read_data(st.session_state["file"])
+            st.session_state["data"] = sanitize_dataframe(read_data(st.session_state["file"]))
             st.dataframe(st.session_state["data"])
         else:
             st.dataframe([], key="table1")
@@ -51,7 +51,7 @@ def data_upload_ui():
         st.markdown("---")
         st.subheader("Phospho Data Preview")
         if st.session_state.get("file3"):
-            st.session_state["data3"] = read_data(st.session_state["file3"])
+            st.session_state["data3"] = sanitize_dataframe(read_data(st.session_state["file3"]))
             st.dataframe(st.session_state["data3"])
         else:
             st.dataframe([], key="table3")
@@ -59,7 +59,7 @@ def data_upload_ui():
         st.markdown("---")
         st.subheader("Full Report Preview")
         if st.session_state.get("file2"):
-            st.session_state["data2"] = read_data(st.session_state["file2"])
+            st.session_state["data2"] = sanitize_dataframe(read_data(st.session_state["file2"]))
             st.dataframe(st.session_state["data2"])
         else:
             st.dataframe([], key="table2")
