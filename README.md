@@ -27,6 +27,8 @@ cd ProteomisCoPYlot
 pip install -r requirements.txt
 ```
 
+---
+
 ## Example Workflow
 
 1. Upload your proteomics dataset (TSV or compatible format)  
