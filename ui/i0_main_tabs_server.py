@@ -21,7 +21,7 @@ def render_main_tabs():
         statistical_analysis_ui()
 
     with main_tabs[3]:
-        peptide_ui()
+        peptide_level_ui()
 
     with main_tabs[4]:
         single_protein_ui()
