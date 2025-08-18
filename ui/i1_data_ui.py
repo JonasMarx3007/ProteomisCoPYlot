@@ -228,7 +228,23 @@ def distribution_ui():
 def verification_ui():
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.selectbox("Level:", ["Protein", "Phosphosite"], key="level3.5")
+        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="level3.5")
     with col2:
         st.subheader("Verification Plots")
-        st.empty()
+
+        if level == "Protein":
+            org_data_key = "org_data"
+        else:
+            org_data_key = "org_data3"
+
+        if org_data_key in st.session_state and st.session_state[org_data_key] is not None:
+            data = st.session_state[org_data_key]
+            meta = st.session_state["meta"]
+
+            fig1 = first_digit_distribution(data, meta)
+            st.pyplot(fig1)
+
+            fig2, _ = data_pattern_structure(data, meta)
+            st.pyplot(fig2)
+        else:
+            st.info(f"{org_data_key} is not defined yet.")

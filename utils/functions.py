@@ -170,6 +170,58 @@ def qqnorm_plot(data, meta):
     return fig
 
 
+@st.cache_data
+def first_digit_distribution(data, meta):
+    sample_columns = meta["sample"].tolist()
+    data_values = data[sample_columns]
+    data_values = data_values.replace(0, np.nan)
+    values_vector = data_values.values.flatten()
+    values_vector = values_vector[~np.isnan(values_vector)]
+    values_vector = values_vector[values_vector > 0]
+    first_digits = [int(str(int(v))[0]) for v in values_vector if v > 0]
+    first_digits = [d for d in first_digits if d in range(1, 10)]
+    digit_freq = pd.Series(first_digits).value_counts(normalize=True).sort_index()
+    benford = {d: np.log10(1 + 1/d) for d in range(1, 10)}
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(digit_freq.index, digit_freq.values, color="darkgreen", label="Observed")
+    for idx, val in zip(digit_freq.index, digit_freq.values):
+        ax.text(idx, val + 0.01, f"{val:.1%}", ha="center", va="bottom", fontsize=9)
+    benford_x = list(benford.keys())
+    benford_y = list(benford.values())
+    ax.plot(benford_x, benford_y, color="red", linewidth=2, marker="o", label="Benford")
+    ax.set_xlabel("First Digit")
+    ax.set_ylabel("Relative Frequency")
+    ax.set_xticks(range(1, 10))
+    ax.set_yticks(np.linspace(0, max(max(digit_freq.values), max(benford_y)) + 0.1, 6))
+    ax.set_yticklabels([f"{y:.0%}" for y in ax.get_yticks()])
+    ax.legend()
+    ax.set_title("First Digit Distribution vs Benford’s Law")
+    plt.tight_layout()
+    return fig
+
+
+@st.cache_data
+def data_pattern_structure(data, meta):
+    sample_columns = meta["sample"].tolist()
+    data_values = data[sample_columns]
+    all_values = data_values.values.flatten()
+    all_values = all_values[~pd.isna(all_values)]
+    value_freq = pd.Series(all_values).value_counts()
+    freq_of_freq = value_freq.value_counts().sort_index()
+    freq_of_freq_percent = 100 * freq_of_freq / freq_of_freq.sum()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    bars = ax.bar(freq_of_freq_percent.index.astype(str), freq_of_freq_percent.values,
+                  color="skyblue")
+    for bar, val in zip(bars, freq_of_freq_percent.values):
+        ax.text(bar.get_x() + bar.get_width()/2, val, f"{val:.3f}%", ha="center",
+                va="bottom", fontsize=8, color="blue")
+    ax.set_xlabel("Duplicate Number Occurrences")
+    ax.set_ylabel("Percentage (%)")
+    ax.set_ylim(0, max(freq_of_freq_percent.values) * 1.2)
+    plt.tight_layout()
+    return fig, freq_of_freq_percent
+
+
 #QC FUNCTIONS
 @st.cache_data
 def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
