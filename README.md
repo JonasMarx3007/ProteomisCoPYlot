@@ -27,7 +27,7 @@ cd ProteomisCoPYlot
 pip install -r requirements.txt
 ```
 
----
+--- 
 
 ## Example Workflow
 
