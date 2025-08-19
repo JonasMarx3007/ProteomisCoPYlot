@@ -319,6 +319,73 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
 
 
 @st.cache_data
+def coverage_plot_pep(data2, meta, id=True, header=True, legend=True,
+                      plot_colors=None, width=10, height=6, dpi=100):
+    data2 = data2.copy()
+    meta = meta.copy()
+
+    meta['sample'] = meta['sample'].astype(str)
+    meta['id'] = meta['sample'].apply(extract_id_or_number)
+
+    if id:
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'].astype(str) + "\n(" + meta['id'] + ")"
+    else:
+        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
+        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'].astype(str)
+
+    if "File.Name" in data2.columns:
+        df_wide = data2.pivot_table(
+            index="File.Name",
+            columns="Stripped.Sequence",
+            values="Precursor.Quantity",
+            aggfunc="max",
+            fill_value=0
+        ).T.reset_index()
+        df_wide.rename(columns={"index": "Stripped.Sequence"}, inplace=True)
+        df_wide.columns = [extract_id_or_number(c) if c != "Stripped.Sequence" else c for c in df_wide.columns]
+        rename_dict = dict(zip(meta['id'], meta['new_sample']))
+        df_wide = df_wide.rename(columns=rename_dict)
+        annotated_cols = [c for c in meta['new_sample'] if c in df_wide.columns]
+        data_filtered = df_wide[["Stripped.Sequence"] + annotated_cols]
+    else:
+        rename_dict = dict(zip(meta['sample'], meta['new_sample']))
+        data_filtered = data2.rename(columns=rename_dict)
+        annotated_cols = [c for c in meta['new_sample'] if c in data_filtered.columns]
+        data_filtered = data_filtered[annotated_cols]
+
+    for col in annotated_cols:
+        data_filtered[col] = np.where(data_filtered[col] != 0, 1, 0)
+
+    plot_data = data_filtered.melt(id_vars="Stripped.Sequence", var_name="Sample", value_name="Value")
+    summary = plot_data.groupby(['Sample']).agg({'Value': 'sum'}).reset_index()
+    summary["Sample"] = pd.Categorical(summary["Sample"], categories=meta["new_sample"], ordered=True)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+
+    colors = plot_colors if plot_colors is not None else plt.cm.tab10.colors
+    cond_order = meta['condition'].unique()
+    color_map = {cond: colors[i % len(colors)] for i, cond in enumerate(cond_order)}
+    bar_colors = [color_map[meta.loc[meta['new_sample']==s, 'condition'].values[0]] for s in summary['Sample']]
+
+    ax.bar(summary['Sample'], summary['Value'], color=bar_colors)
+    ax.axhline(y=data_filtered.shape[0], color='red', linestyle='--')
+    ax.set_ylabel("Number of peptides")
+    if header:
+        ax.set_title("Peptides per sample")
+
+    ax.set_xticks(range(len(meta["new_sample"])))
+    ax.set_xticklabels(meta["new_sample"], rotation=90)
+
+    if legend:
+        handles = [plt.Rectangle((0,0),1,1, color=color_map[cond]) for cond in cond_order]
+        ax.legend(handles, cond_order, title="Condition", bbox_to_anchor=(1.05, 1), loc='upper left')
+
+    plt.tight_layout()
+    return fig
+
+
+@st.cache_data
 def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88, width=7.87, height=3.94, dpi=300):
     annotated_columns = meta['sample']
     data_filtered = data[annotated_columns].copy()
@@ -363,6 +430,109 @@ def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88
     ax.grid(axis='y', linestyle='--', alpha=0.7)
     plt.tight_layout()
 
+    return fig
+
+
+@st.cache_data
+def missing_value_plot_prec(data2, meta, bin=0, header=True, text=True,
+                            text_size=8, width=10, height=6, dpi=100):
+    df_wide = data2.pivot_table(
+        index='File.Name',
+        columns='Precursor.Id',
+        values='Precursor.Quantity',
+        aggfunc='first'
+    )
+
+    df_wide = df_wide.T
+    df_wide.columns = df_wide.columns.map(lambda x: extract_id_or_number(x))
+
+    meta['sample'] = meta['sample'].map(lambda x: extract_id_or_number(x))
+
+    annotated_columns = meta['sample'].tolist()
+    data_filtered = df_wide.loc[:, df_wide.columns.isin(annotated_columns)]
+
+    na_count = data_filtered.isna().sum(axis=1)
+
+    if bin > 0:
+        na_count = na_count.apply(lambda x: f">{bin}" if x > bin else str(x))
+    else:
+        na_count = na_count.astype(str)
+
+    miss_vals = na_count.value_counts().sort_index()
+
+    if bin > 0:
+        levels_vec = [str(i) for i in range(bin + 1)] + [f">{bin}"]
+    else:
+        levels_vec = sorted(miss_vals.index, key=lambda x: int(x))
+
+    miss_vals = miss_vals.reindex(levels_vec, fill_value=0)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    ax.bar(miss_vals.index, miss_vals.values, color='blue')
+
+    if header:
+        ax.set_title("Missing Value Plot - Precursor Level")
+    ax.set_xlabel("Number of Missing Values")
+    ax.set_ylabel("Frequency")
+
+    if text:
+        for i, val in enumerate(miss_vals.values):
+            if val > 0:
+                ax.text(i, val + 0.5, str(val), ha='center', va='bottom', fontsize=text_size)
+
+    plt.tight_layout()
+    return fig
+
+
+@st.cache_data
+def missing_value_plot_pep(data2, meta, bin=0, header=True, text=True,
+                           text_size=8, width=10, height=6, dpi=100):
+    if "File.Name" in data2.columns:
+        df_wide = data2.pivot_table(
+            index='File.Name',
+            columns='Stripped.Sequence',
+            values='Precursor.Quantity',
+            aggfunc='max'
+        )
+        df_wide = df_wide.T
+        df_wide.columns = df_wide.columns.map(lambda x: extract_id_or_number(x))
+    else:
+        df_wide = data2.copy()
+
+    meta['sample'] = meta['sample'].map(lambda x: extract_id_or_number(x))
+    annotated_columns = meta['sample'].tolist()
+    data_filtered = df_wide.loc[:, df_wide.columns.isin(annotated_columns)]
+
+    na_count = data_filtered.isna().sum(axis=1)
+
+    if bin > 0:
+        na_count = na_count.apply(lambda x: f">{bin}" if x > bin else str(x))
+    else:
+        na_count = na_count.astype(str)
+
+    miss_vals = na_count.value_counts().sort_index()
+
+    if bin > 0:
+        levels_vec = [str(i) for i in range(bin + 1)] + [f">{bin}"]
+    else:
+        levels_vec = sorted(miss_vals.index, key=lambda x: int(x))
+
+    miss_vals = miss_vals.reindex(levels_vec, fill_value=0)
+
+    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    ax.bar(miss_vals.index, miss_vals.values, color='blue')
+
+    if header:
+        ax.set_title("Missing Value Plot - Peptide Level")
+    ax.set_xlabel("Number of Missing Values")
+    ax.set_ylabel("Frequency")
+
+    if text:
+        for i, val in enumerate(miss_vals.values):
+            if val > 0:
+                ax.text(i, val + 0.5, str(val), ha='center', va='bottom', fontsize=text_size)
+
+    plt.tight_layout()
     return fig
 
 
@@ -1461,3 +1631,5 @@ def simple_phos_site_plot(data, filter_value=0, width=6, height=4, dpi=100):
 
     plt.tight_layout()
     return fig
+
+

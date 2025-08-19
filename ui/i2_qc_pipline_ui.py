@@ -1,6 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
-from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep
 
 #MAIN
 def qc_pipeline_ui():
@@ -46,10 +46,9 @@ def coverage_plot_ui():
         available_levels.append("Phosphosite")
 
     with col1:
-        st.checkbox("Toggle IDs", value=False, key="toggle_id3")
-        st.checkbox("Toggle Header", value=True, key="toggle_header3")
-        st.checkbox("Toggle Legend", value=True, key="toggle_legend3")
-
+        toggle_id = st.checkbox("Toggle IDs", value=False, key="toggle_id3")
+        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header3")
+        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend3")
         st.markdown("---")
         if available_levels:
             level = st.selectbox("Level:", available_levels, key="level3")
@@ -60,11 +59,11 @@ def coverage_plot_ui():
         st.selectbox("Type:", ["Normal", "Summary"], key="type3")
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="plotWidth3")
-        st.number_input("Height (cm):", value=10, key="plotHeight3")
-        st.number_input("DPI:", value=300, key="plotDPI3")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
-        st.download_button("Download Plot", data="", file_name="coverage_plot.png", key="downloadCoveragePlot")
+        width = st.number_input("Width (cm):", value=20, key="plotWidth3")
+        height = st.number_input("Height (cm):", value=10, key="plotHeight3")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI3")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
+        st.download_button("Download Plot", data="", file_name=f"coverage_plot.{file_format}", key="downloadCoveragePlot")
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="textPosition3")
         st.text_area("Annotation Text:", key="text3")
@@ -75,24 +74,27 @@ def coverage_plot_ui():
         if level == "Protein":
             data_to_use = st.session_state.get("data", None)
             meta_to_use = st.session_state.get("meta", None)
+            plot_func = coverage_plot
         elif level == "Peptide":
             data_to_use = st.session_state.get("data2", None)
             meta_to_use = st.session_state.get("meta", None)
+            plot_func = coverage_plot_pep
         elif level == "Phosphosite":
             data_to_use = st.session_state.get("data3", None)
             meta_to_use = st.session_state.get("meta2", None)
+            plot_func = coverage_plot
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                fig = coverage_plot(
-                    data=data_to_use,
+                fig = plot_func(
+                    data2=data_to_use,
                     meta=meta_to_use,
-                    id=st.session_state.get("toggle_id3", True),
-                    header=st.session_state.get("toggle_header3", True),
-                    legend=st.session_state.get("toggle_legend3", True),
-                    width=st.session_state.get("plotWidth3", 20),
-                    height=st.session_state.get("plotHeight3", 10),
-                    dpi=st.session_state.get("plotDPI3", 300)
+                    id=toggle_id,
+                    header=toggle_header,
+                    legend=toggle_legend,
+                    width=width,
+                    height=height,
+                    dpi=dpi
                 )
                 st.pyplot(fig)
             except Exception as e:
@@ -124,7 +126,7 @@ def missing_value_plot_ui():
         bin_val = st.number_input("Bin missing values (optional):", value=0, min_value=0, key="missValBin4")
         st.markdown("---")
         text_toggle = st.checkbox("Toggle Text", value=True, key="toggle_text4")
-        text_size = st.number_input("Text Size:", value=3.88, key="text_size4")
+        text_size = st.number_input("Text Size:", value=8, key="text_size4")
         st.markdown("---")
         st.header("Plot Size & Resolution")
         width = st.number_input("Width (cm):", value=20, key="plotWidth4")
@@ -142,17 +144,24 @@ def missing_value_plot_ui():
         if level == "Protein":
             data_to_use = st.session_state.get("data", None)
             meta_to_use = st.session_state.get("meta", None)
-        elif level in ["Peptide", "Precursor"]:
+            plot_func = missing_value_plot
+        elif level == "Peptide":
             data_to_use = st.session_state.get("data2", None)
             meta_to_use = st.session_state.get("meta", None)
+            plot_func = missing_value_plot_pep
+        elif level == "Precursor":
+            data_to_use = st.session_state.get("data2", None)
+            meta_to_use = st.session_state.get("meta", None)
+            plot_func = missing_value_plot_prec
         elif level == "Phosphosite":
             data_to_use = st.session_state.get("data3", None)
             meta_to_use = st.session_state.get("meta2", None)
+            plot_func = missing_value_plot
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                fig = missing_value_plot(
-                    data=data_to_use,
+                fig = plot_func(
+                    data2=data_to_use if level in ["Precursor", "Peptide"] else data_to_use,
                     meta=meta_to_use,
                     bin=bin_val,
                     header=header_toggle,
