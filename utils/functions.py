@@ -32,7 +32,7 @@ def make_columns_unique(df):
 
 def sanitize_dataframe(df):
     df = df.copy()
-    df = make_columns_unique(df)  # Make column names unique first
+    df = make_columns_unique(df)
     for col in df.columns:
         if isinstance(df[col], pd.Series):
             if not pd.api.types.is_numeric_dtype(df[col]):
@@ -119,9 +119,8 @@ def read_data(file):
 
 
 def extract_id_or_number(x):
-    import re
-    m = re.search(r'\d+', x)
-    return m.group(0) if m else x
+    matches = re.findall(r'\d+', x)
+    return matches[-1] if matches else x
 
 
 @st.cache_data
@@ -1033,131 +1032,192 @@ def rt_vs_pred_rt_plot(data, method="Hexbin Plot", add_line=False, bins=1000, he
 
 
 @st.cache_data
-def modification_plot(data, meta, id=True, header=True, width=10, height=6, dpi=100):
-    data_names = data['File.Name'].unique()
-    meta['sample'] = meta['sample'].apply(lambda s: s if s in data_names else s)
+def modification_plot(data2, meta, id=True, header=True, width=10, height=6, dpi=100, show=True):
+    data2 = data2.copy()
+    meta = meta.copy()
 
-    df_wide = data.pivot_table(index='File.Name', columns='Modified.Sequence',
-                               values='Precursor.Quantity', aggfunc='max', fill_value=np.nan).T
-    df_wide.columns = [extract_id_or_number(c) for c in df_wide.columns]
-    df_wide.index.name = 'Modified.Sequence'
+    data2_names = data2['File.Name'].unique()
+    for name in data2_names:
+        meta['sample'] = np.where(meta['sample'] == name, name, meta['sample'])
 
-    meta['id'] = meta['sample'].apply(extract_id_or_number)
+    data2_wide = (
+        data2.pivot_table(
+            index="File.Name",
+            columns="Modified.Sequence",
+            values="Precursor.Quantity",
+            aggfunc="max"
+        )
+        .reset_index()
+    )
+
+    data2_wide = data2_wide.set_index("File.Name").T.reset_index()
+    data2_wide.rename(columns={"index": "Modified.Sequence"}, inplace=True)
+
+    new_cols = [extract_id_or_number(c) for c in data2_wide.columns]
+    data2_wide.columns = new_cols
+
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].apply(extract_id_or_number)
+
     if id:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'] + "\n(" + meta['id'] + ")"
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str) + "\n (" + meta["id"] + ")"
     else:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample']
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str)
 
-    rename_dict = dict(zip(meta['id'], meta['new_sample']))
-    df_wide.rename(columns=rename_dict, inplace=True)
-    annotated_cols = [c for c in df_wide.columns if c in meta['new_sample']]
-    df_filtered = df_wide[annotated_cols]
+    rename_dict = dict(zip(meta["id"], meta["new_sample"]))
+    data2_wide = data2_wide.rename(columns=rename_dict)
+
+    annotated_cols = [c for c in meta["new_sample"] if c in data2_wide.columns]
+    data_filtered = data2_wide[["Modified.Sequence"] + annotated_cols]
 
     def get_mod_count(df, pattern):
-        mask = df.index.str.contains(pattern)
-        sub_df = df[mask].fillna(0).applymap(lambda x: 1 if x>0 else 0)
-        return sub_df.sum()
+        df_mod = df[df["Modified.Sequence"].str.contains(pattern, na=False)].copy()
+        for col in df_mod.columns[1:]:
+            df_mod[col] = df_mod[col].notna().astype(int)
+        return df_mod.iloc[:, 1:].sum(axis=0)
 
-    col_sums_carb = get_mod_count(df_filtered, "UniMod:4|Carbamidomethyl")
-    col_sums_oxi = get_mod_count(df_filtered, "UniMod:35|Oxidation")
-    col_sums_ace = get_mod_count(df_filtered, "UniMod:1|Acetyl")
+    col_sums_carb = get_mod_count(data_filtered, "UniMod:4|Carbamidomethyl")
+    col_sums_oxi  = get_mod_count(data_filtered, "UniMod:35|Oxidation")
+    col_sums_ace  = get_mod_count(data_filtered, "UniMod:1|Acetyl")
 
     plot_data = pd.DataFrame({
-        'Sample': list(col_sums_carb.index)*3,
-        'Count': pd.concat([col_sums_carb, col_sums_oxi, col_sums_ace]).values,
-        'Modification': ['Carbamylation']*len(col_sums_carb) + ['Oxidation']*len(col_sums_carb) + ['Acetylation']*len(col_sums_carb)
+        "Sample": list(col_sums_carb.index) * 3,
+        "Count": list(col_sums_carb.values) + list(col_sums_oxi.values) + list(col_sums_ace.values),
+        "Modification": (["Carbamylation"] * len(col_sums_carb)) +
+                        (["Oxidation"] * len(col_sums_oxi)) +
+                        (["Acetylation"] * len(col_sums_ace))
     })
-    plot_data = plot_data[plot_data['Count']>0]
 
-    samples_order = meta['new_sample'].tolist()
-    plot_data['Sample'] = pd.Categorical(plot_data['Sample'], categories=samples_order, ordered=True)
+    plot_data = plot_data[plot_data["Count"] > 0]
+    plot_data["Sample"] = pd.Categorical(plot_data["Sample"], categories=meta["new_sample"], ordered=True)
 
     fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
-    modifications = plot_data['Modification'].unique()
-    colors = {"Carbamylation":"blue", "Oxidation":"red", "Acetylation":"green"}
+    modifications = plot_data["Modification"].unique()
+    x = np.arange(len(plot_data["Sample"].unique()))
+    bar_width = 0.25
+    offsets = np.linspace(-bar_width, bar_width, len(modifications))
 
-    width_bar = 0.2
-    positions = np.arange(len(samples_order))
     for i, mod in enumerate(modifications):
-        subset = plot_data[plot_data['Modification']==mod]
-        counts = subset.set_index('Sample').reindex(samples_order)['Count'].fillna(0)
-        ax.bar(positions + i*width_bar, counts, width=width_bar, label=mod, color=colors[mod])
+        subset = plot_data[plot_data["Modification"] == mod]
+        ax.bar(x + offsets[i],
+               subset["Count"],
+               width=bar_width,
+               label=mod)
 
-    ax.set_xticks(positions + width_bar)
-    ax.set_xticklabels(samples_order, rotation=90)
+    ax.set_xticks(x)
+    ax.set_xticklabels(plot_data["Sample"].unique(), rotation=90)
+    ax.set_xlabel("Sample")
     ax.set_ylabel("Number of modified peptides")
     if header:
         ax.set_title("Modifications per sample")
-    ax.legend()
+    ax.legend(title="Modification")
     plt.tight_layout()
+
+    if show:
+        plt.show()
+
     return fig
 
 
 @st.cache_data
-def missed_cleavage_plot(data, meta, id=True, text=True, text_size=8, header=True, width=10, height=6, dpi=100):
-    data_names = data['File.Name'].unique()
-    meta['sample'] = meta['sample'].apply(lambda s: s if s in data_names else s)
+def missed_cleavage_plot(data2, meta, id=True, text=True, text_size=8, header=True, width=10, height=6, dpi=100):
+    data2 = data2.copy()
+    meta = meta.copy()
 
-    df_wide = data.pivot_table(index='File.Name', columns='Stripped.Sequence',
-                               values='Precursor.Quantity', aggfunc='max', fill_value=np.nan).T
-    df_wide.columns = [extract_id_or_number(c) for c in df_wide.columns]
-    meta['id'] = meta['sample'].apply(extract_id_or_number)
+    data2_names = data2['File.Name'].unique()
+    for name in data2_names:
+        meta['sample'] = np.where(meta['sample'] == name, name, meta['sample'])
+
+    df_wide = data2.pivot_table(
+        index="File.Name",
+        columns="Stripped.Sequence",
+        values="Precursor.Quantity",
+        aggfunc="max"
+    ).T.reset_index()
+
+    df_wide.rename(columns={"index": "Stripped.Sequence"}, inplace=True)
+    df_wide.columns = [extract_id_or_number(c) if c != "Stripped.Sequence" else c for c in df_wide.columns]
+
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].apply(extract_id_or_number)
 
     if id:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'] + "\n(" + meta['id'] + ")"
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str) + "\n(" + meta["id"] + ")"
     else:
-        meta['new_sample'] = meta.groupby('condition').cumcount().add(1).astype(str)
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample']
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str)
 
-    rename_dict = dict(zip(meta['id'], meta['new_sample']))
-    df_wide.rename(columns=rename_dict, inplace=True)
-    annotated_cols = [c for c in df_wide.columns if c in meta['new_sample']]
-    df_filtered = df_wide[annotated_cols]
+    rename_dict = dict(zip(meta["id"], meta["new_sample"]))
+    df_wide = df_wide.rename(columns=rename_dict)
 
-    def count_missed(seq):
-        count = seq.count('R') + seq.count('K') - 1
-        return max(0, count)
+    annotated_cols = [c for c in meta["new_sample"] if c in df_wide.columns]
+    data_filtered = df_wide[["Stripped.Sequence"] + annotated_cols]
 
-    rk_counts = [count_missed(seq) for seq in df_filtered.index]
-    for col in df_filtered.columns:
-        df_filtered[col] = df_filtered[col].notna() * rk_counts
+    def count_all_RK(sequence):
+        count_R = sequence.count("R")
+        count_K = sequence.count("K")
+        return max(0, count_R + count_K - 1)
 
-    plot_data = df_filtered.reset_index().melt(id_vars='Stripped.Sequence', var_name='Sample', value_name='Count')
-    plot_data = plot_data.dropna(subset=['Count'])
-    plot_data_grouped = plot_data.groupby(['Sample','Count']).size().reset_index(name='Occurrences')
-    plot_data_grouped['Total'] = plot_data_grouped.groupby('Sample')['Occurrences'].transform('sum')
-    plot_data_grouped['Percentage'] = plot_data_grouped['Occurrences'] / plot_data_grouped['Total'] * 100
+    rk_counts = [count_all_RK(seq) for seq in data_filtered["Stripped.Sequence"]]
 
-    samples_order = meta['new_sample'].tolist()
-    plot_data_grouped['Sample'] = pd.Categorical(plot_data_grouped['Sample'], categories=samples_order, ordered=True)
-    plot_data_grouped['Count'] = plot_data_grouped['Count'].astype(int)
+    for col in data_filtered.columns[1:]:
+        data_filtered[col] = np.where(data_filtered[col].notna(), rk_counts, np.nan)
+
+    plot_data = data_filtered.melt(id_vars="Stripped.Sequence", var_name="Sample", value_name="Count")
+    plot_data = plot_data.dropna(subset=["Count"])
+    plot_data_grouped = (
+        plot_data.groupby(["Sample", "Count"])
+        .size()
+        .reset_index(name="Occurrences")
+    )
+    plot_data_grouped["Total"] = plot_data_grouped.groupby("Sample")["Occurrences"].transform("sum")
+    plot_data_grouped["Percentage"] = plot_data_grouped["Occurrences"] / plot_data_grouped["Total"] * 100
+
+    samples_order = meta["new_sample"].tolist()
+    plot_data_grouped["Sample"] = pd.Categorical(plot_data_grouped["Sample"], categories=samples_order, ordered=True)
+    plot_data_grouped["Count"] = plot_data_grouped["Count"].astype(int)
 
     fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
-    counts_sorted = sorted(plot_data_grouped['Count'].unique(), reverse=True)
+
+    counts_sorted = sorted(plot_data_grouped["Count"].unique())
     bottom = np.zeros(len(samples_order))
 
     for c in counts_sorted:
-        subset = plot_data_grouped[plot_data_grouped['Count']==c].set_index('Sample').reindex(samples_order)['Percentage'].fillna(0)
+        subset = (
+            plot_data_grouped[plot_data_grouped["Count"] == c]
+            .set_index("Sample")
+            .reindex(samples_order)["Percentage"]
+            .fillna(0)
+        )
         ax.bar(samples_order, subset, bottom=bottom, label=str(c))
         bottom += subset
 
     ax.set_ylabel("Percentage of peptides with missed cleavage (%)")
-    ax.set_ylim(0, max(bottom)*1.05)
+    ax.set_ylim(0, max(bottom) * 1.05)
     ax.yaxis.set_major_formatter(mtick.PercentFormatter())
 
     if text:
-        single_mc = plot_data_grouped[plot_data_grouped['Count']==1].set_index('Sample').reindex(samples_order)['Percentage'].fillna(0)
+        single_mc = (
+            plot_data_grouped[plot_data_grouped["Count"] == 1]
+            .set_index("Sample")
+            .reindex(samples_order)["Percentage"]
+            .fillna(0)
+        )
         for i, val in enumerate(single_mc):
             if val > 0:
-                ax.text(i, bottom[i]*0.99, f"{val:.1f}%", ha='center', va='bottom', color='white', fontsize=text_size)
+                ax.text(i, bottom[i] * 1, f"{val:.1f}%", ha="center", va="bottom", color="black", fontsize=text_size)
 
     if header:
         ax.set_title("Missed cleavages per sample")
+
+    ax.set_xticks(range(len(samples_order)))
     ax.set_xticklabels(samples_order, rotation=90)
-    ax.legend(title='Number')
+
+    ax.legend(title="Number", bbox_to_anchor=(1.05, 1), loc='upper left')
+
     plt.tight_layout()
     return fig
 

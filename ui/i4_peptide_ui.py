@@ -53,7 +53,7 @@ def rt_plot_ui():
 def modification_plot_ui():
     col1, col2 = st.columns([1, 2])
     with col1:
-        id_toggle = st.checkbox("Toggle ID", key="toggle_id15")
+        id_toggle = st.checkbox("Toggle ID", value=False,  key="toggle_id15")
         header = st.checkbox("Show Header", key="header15")
         st.markdown("---")
 
@@ -83,6 +83,7 @@ def missed_cleavage_plot_ui():
     col1, col2 = st.columns([1, 2])
     with col1:
         header = st.checkbox("Show Header", key="header16")
+        id_toggle = st.checkbox("Toggle ID", value=False, key="id_toggle16")
         text_toggle = st.checkbox("Show Text", key="toggle_text16")
         text_size = st.number_input("Text Size:", value=8, key="text_size16")
         st.markdown("---")
@@ -101,6 +102,7 @@ def missed_cleavage_plot_ui():
                 text=text_toggle,
                 text_size=text_size,
                 header=header,
+                id=id_toggle,
                 width=plot_width,
                 height=plot_height,
                 dpi=plot_dpi
