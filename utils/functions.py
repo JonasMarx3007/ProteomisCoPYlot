@@ -1036,6 +1036,57 @@ def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20
 
 
 @st.cache_data
+def interactive_abundance_plot(data, meta, condition, workflow="Protein", search=None):
+    data = data.replace(0, np.nan)
+    annotated_columns = meta.loc[meta["condition"] == condition, "sample"].tolist()
+
+    if workflow == "Protein":
+        data_filtered = data[["ProteinNames"] + annotated_columns]
+        feature_col = "ProteinNames"
+    elif workflow == "Phosphosite":
+        data_filtered = data[["PTM_Collapse_key"] + annotated_columns]
+        feature_col = "PTM_Collapse_key"
+    else:
+        raise ValueError("workflow must be 'Protein' or 'Phosphosite'")
+
+    condition_means = data_filtered[annotated_columns].mean(axis=1, skipna=True)
+    condition_means = np.log10(condition_means + 1)
+
+    mean_intensities = pd.DataFrame({
+        "Feature": data_filtered[feature_col],
+        "log10Intensity": condition_means
+    }).dropna()
+
+    mean_intensities = mean_intensities.sort_values("log10Intensity", ascending=False).reset_index(drop=True)
+    mean_intensities["Rank"] = mean_intensities.index + 1
+
+    if search is None:
+        search = []
+    mean_intensities["Color"] = np.where(mean_intensities["Feature"].isin(search), "red", "blue")
+
+    fig = px.scatter(
+        mean_intensities,
+        x="Rank",
+        y="log10Intensity",
+        color="Color",
+        text="Feature",
+        color_discrete_map={"red": "red", "blue": "blue"},
+        title=f"Abundance plot - {condition}"
+    )
+
+    fig.update_traces(marker=dict(size=5), textposition="top center")
+    fig.update_layout(
+        xaxis_title=f"{workflow} Rank",
+        yaxis_title=f"log10 {workflow} Intensity",
+        showlegend=False
+    )
+
+    fig.add_traces(px.line(mean_intensities, x="Rank", y="log10Intensity").data)
+
+    return fig
+
+
+@st.cache_data
 def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, height=8, dpi=100):
     meta = meta.copy()
     meta['sample'] = meta['sample'].astype(str)
