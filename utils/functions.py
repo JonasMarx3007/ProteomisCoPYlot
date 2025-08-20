@@ -18,7 +18,6 @@ import scipy.stats as stats
 from pathlib import Path
 import sys
 import matplotlib.ticker as mtick
-from scipy.stats import gaussian_kde
 
 
 #BASIC AND DATA FUNCTIONS
@@ -1280,7 +1279,7 @@ def rt_vs_pred_rt_plot(data, method="Hexbin Plot", add_line=False, bins=1000, he
 
 
 @st.cache_data
-def modification_plot(data2, meta, id=True, header=True, width=10, height=6, dpi=100, show=True):
+def modification_plot(data2, meta, id=True, header=True, legend=True, width=10, height=6, dpi=100):
     data2 = data2.copy()
     meta = meta.copy()
 
@@ -1360,12 +1359,15 @@ def modification_plot(data2, meta, id=True, header=True, width=10, height=6, dpi
     ax.set_ylabel("Number of modified peptides")
     if header:
         ax.set_title("Modifications per sample")
-    ax.legend(title="Modification")
+
+    if legend:
+        ax.legend(title="Modification", bbox_to_anchor=(1.05, 1), loc='upper left')
+    else:
+        leg = ax.get_legend()
+        if leg is not None:
+            leg.remove()
+
     plt.tight_layout()
-
-    if show:
-        plt.show()
-
     return fig
 
 

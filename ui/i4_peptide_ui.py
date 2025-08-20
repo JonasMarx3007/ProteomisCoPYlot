@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.functions import rt_vs_pred_rt_plot, modification_plot, missed_cleavage_plot
+import io
 
 #MAIN
 def peptide_level_ui():
@@ -19,6 +20,7 @@ def peptide_level_ui():
 #SUB
 def rt_plot_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
         add_line = st.checkbox("Add Line", key="line14")
         header = st.checkbox("Show Header", key="header14")
@@ -32,6 +34,9 @@ def rt_plot_ui():
         plot_width = st.number_input("Width:", value=8, key="plotWidth14")
         plot_height = st.number_input("Height:", value=6, key="plotHeight14")
         plot_dpi = st.number_input("DPI:", value=100, key="plotDPI14")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat14")
+
+        download_placeholder = st.empty()
 
     with col2:
         if "data2" in st.session_state and st.session_state["data2"] is not None:
@@ -46,41 +51,71 @@ def rt_plot_ui():
                 dpi=plot_dpi
             )
             st.pyplot(fig)
+
+            buf = io.BytesIO()
+            fig.savefig(buf, format=file_format, dpi=plot_dpi)
+            buf.seek(0)
+
+            download_placeholder.download_button(
+                "Download Plot",
+                data=buf,
+                file_name=f"rt_plot.{file_format}",
+                mime=f"image/{file_format}"
+            )
         else:
             st.info("No data available for RT Plot.")
 
 
 def modification_plot_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
-        id_toggle = st.checkbox("Toggle ID", value=False,  key="toggle_id15")
+        id_toggle = st.checkbox("Toggle ID", value=False, key="toggle_id15")
         header = st.checkbox("Show Header", key="header15")
+        legend_toggle = st.checkbox("Show Legend", value=True, key="legend15")
         st.markdown("---")
 
         st.subheader("Plot Size & Resolution")
         plot_width = st.number_input("Width:", value=10, key="plotWidth15")
         plot_height = st.number_input("Height:", value=6, key="plotHeight15")
         plot_dpi = st.number_input("DPI:", value=100, key="plotDPI15")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat15")
+
+        download_placeholder = st.empty()
 
     with col2:
-        if "data2" in st.session_state and st.session_state["data2"] is not None and \
-           "meta" in st.session_state and st.session_state["meta"] is not None:
+        if ("data2" in st.session_state and st.session_state["data2"] is not None) and \
+                ("meta" in st.session_state and st.session_state["meta"] is not None):
+
             fig = modification_plot(
                 st.session_state["data2"],
                 st.session_state["meta"],
                 id=id_toggle,
                 header=header,
+                legend=legend_toggle,
                 width=plot_width,
                 height=plot_height,
                 dpi=plot_dpi
             )
             st.pyplot(fig)
+
+            buf = io.BytesIO()
+            fig.savefig(buf, format=file_format, dpi=plot_dpi)
+            buf.seek(0)
+
+            download_placeholder.download_button(
+                "Download Plot",
+                data=buf,
+                file_name=f"modification_plot.{file_format}",
+                mime=f"image/{file_format}"
+            )
         else:
             st.info("Both data and meta information are required for the Modification Plot.")
 
 
 def missed_cleavage_plot_ui():
     col1, col2 = st.columns([1, 2])
+
     with col1:
         header = st.checkbox("Show Header", key="header16")
         id_toggle = st.checkbox("Toggle ID", value=False, key="id_toggle16")
@@ -92,10 +127,14 @@ def missed_cleavage_plot_ui():
         plot_width = st.number_input("Width:", value=10, key="plotWidth16")
         plot_height = st.number_input("Height:", value=6, key="plotHeight16")
         plot_dpi = st.number_input("DPI:", value=100, key="plotDPI16")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat16")
+
+        download_placeholder = st.empty()
 
     with col2:
-        if "data2" in st.session_state and st.session_state["data2"] is not None and \
-           "meta" in st.session_state and st.session_state["meta"] is not None:
+        if ("data2" in st.session_state and st.session_state["data2"] is not None) and \
+                ("meta" in st.session_state and st.session_state["meta"] is not None):
+
             fig = missed_cleavage_plot(
                 st.session_state["data2"],
                 st.session_state["meta"],
@@ -108,5 +147,16 @@ def missed_cleavage_plot_ui():
                 dpi=plot_dpi
             )
             st.pyplot(fig)
+
+            buf = io.BytesIO()
+            fig.savefig(buf, format=file_format, dpi=plot_dpi)
+            buf.seek(0)
+
+            download_placeholder.download_button(
+                "Download Plot",
+                data=buf,
+                file_name=f"missed_cleavage_plot.{file_format}",
+                mime=f"image/{file_format}"
+            )
         else:
             st.info("Both data and meta information are required for the Missed Cleavage Plot.")
