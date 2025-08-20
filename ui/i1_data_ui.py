@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import os
-from utils.functions import read_data, inverse_log2_transform_data, log2_transform_data, filter_data, qqnorm_plot, first_digit_distribution, data_pattern_structure, sanitize_dataframe
+import io
+from utils.functions import read_data, inverse_log2_transform_data, log2_transform_data, filter_data, qqnorm_plot, first_digit_distribution, data_pattern_structure, sanitize_dataframe, impute_values
 
 #MAIN
 def data_ui():
@@ -187,20 +188,70 @@ def data_annotation_ui():
 def impute_data_ui():
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.button("Impute Data Values", key="ImputeEVE")
-        st.markdown("---")
         st.header("Imputation Settings")
-        st.number_input("q-Value:", value=0.01, key="qn1")
-        st.number_input("Adjust Standard Deviation:", value=1, key="adj_stdn1")
-        st.number_input("Random Seed:", value=1337, key="seedn1")
-        st.selectbox("Level:", ["Protein", "Phosphosite"], key="leveln1")
+        q_val = st.number_input("q-Value:", value=0.01, key="qn1")
+        adj_std = st.number_input("Adjust Standard Deviation:", value=1, key="adj_stdn1")
+        seed = st.number_input("Random Seed:", value=1337, key="seedn1")
+        level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="leveln1")
         st.markdown("---")
-        st.download_button("Download Imputed Data", data="", file_name="imputed.csv", key="imputed_data_down")
+        impute_btn = st.button("Impute Data Values", key="ImputeEVE")
+        st.markdown("---")
+        download_placeholder = st.empty()
     with col2:
         st.subheader("Imputation Plots")
-        st.empty()
+        plot1 = st.empty()
+        plot2 = st.empty()
+        plot3 = st.empty()
         st.subheader("Imputed Data Table")
-        st.dataframe([], key="imputed_data_tab")
+        table_placeholder = st.empty()
+
+    if "imputed_log2_data" not in st.session_state:
+        st.session_state.imputed_log2_data = None
+    if "imputed_log2_data3" not in st.session_state:
+        st.session_state.imputed_log2_data3 = None
+
+    if level == "Protein":
+        base_data = st.session_state.get("filtered_log2_data", st.session_state.get("log2_data"))
+        meta = st.session_state.get("meta")
+        if base_data is not None and meta is not None:
+            plot1.pyplot(impute_values(base_data, meta, ret=1, q=q_val, adj_std=adj_std, seed=seed))
+            plot2.pyplot(impute_values(base_data, meta, ret=2, q=q_val, adj_std=adj_std, seed=seed))
+            plot3.pyplot(impute_values(base_data, meta, ret=3, q=q_val, adj_std=adj_std, seed=seed))
+
+    elif level == "Phosphosite":
+        base_data = st.session_state.get("filtered_log2_data3", st.session_state.get("log2_data3"))
+        meta = st.session_state.get("meta2")
+        if base_data is not None and meta is not None:
+            plot1.pyplot(impute_values(base_data, meta, ret=1, q=q_val, adj_std=adj_std, seed=seed))
+            plot2.pyplot(impute_values(base_data, meta, ret=2, q=q_val, adj_std=adj_std, seed=seed))
+            plot3.pyplot(impute_values(base_data, meta, ret=3, q=q_val, adj_std=adj_std, seed=seed))
+
+    if impute_btn:
+        if level == "Protein" and base_data is not None and meta is not None:
+            st.session_state.imputed_log2_data = impute_values(base_data, meta, ret=0, q=q_val, adj_std=adj_std, seed=seed)
+
+        elif level == "Phosphosite" and base_data is not None and meta is not None:
+            st.session_state.imputed_log2_data3 = impute_values(base_data, meta, ret=0, q=q_val, adj_std=adj_std, seed=seed)
+
+    if level == "Protein" and st.session_state.imputed_log2_data is not None:
+        table_placeholder.dataframe(st.session_state.imputed_log2_data)
+        csv_buf = io.StringIO()
+        st.session_state.imputed_log2_data.to_csv(csv_buf, index=False)
+        download_placeholder.download_button(
+            "Download Imputed Data",
+            data=csv_buf.getvalue(),
+            file_name="imputed_log2_data.csv"
+        )
+
+    elif level == "Phosphosite" and st.session_state.imputed_log2_data3 is not None:
+        table_placeholder.dataframe(st.session_state.imputed_log2_data3)
+        csv_buf = io.StringIO()
+        st.session_state.imputed_log2_data3.to_csv(csv_buf, index=False)
+        download_placeholder.download_button(
+            "Download Imputed Phospho Data",
+            data=csv_buf.getvalue(),
+            file_name="imputed_log2_data_phospho.csv"
+        )
 
 
 def distribution_ui():

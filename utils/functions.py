@@ -18,6 +18,8 @@ import scipy.stats as stats
 from pathlib import Path
 import sys
 import matplotlib.ticker as mtick
+from scipy.stats import gaussian_kde
+
 
 #BASIC AND DATA FUNCTIONS
 def make_columns_unique(df):
@@ -242,6 +244,82 @@ def data_pattern_structure(data, meta):
     ax.set_ylim(0, max(freq_of_freq_percent.values) * 1.2)
     plt.tight_layout()
     return fig, freq_of_freq_percent
+
+
+def impute_values(data: pd.DataFrame, meta: pd.DataFrame, q=0.01, adj_std=1, ret=0, sample_wise=False, seed=69):
+    np.random.seed(seed)
+    data = data.replace(0, np.nan).copy()
+    annotated_columns = meta["sample"].tolist()
+    data_filtered = data[annotated_columns]
+    combined_data = data_filtered.values.flatten()
+    missing_value_mask = data_filtered.isna()
+    data_without_na = data_filtered.loc[~data_filtered.isna().any(axis=1)]
+    data_with_na = data_filtered.loc[data_filtered.isna().any(axis=1)]
+    combined_data_without_na = data_without_na.values.flatten()
+    combined_data_with_na = data_with_na.values.flatten()
+
+    if ret == 1:
+        fig, ax = plt.subplots()
+        ax.hist([combined_data_without_na, combined_data_with_na],
+                bins=50, density=True, alpha=0.6, histtype='stepfilled',
+                label=["Without Missing Values", "With Missing Values"])
+        ax.legend()
+        ax.set_title("Overall distribution of data with and without missing values")
+        ax.set_xlabel("log2 Intensity")
+        ax.set_ylabel("Density")
+        return fig
+
+    mean_val = np.nanmean(combined_data)
+    sd_val = np.nanstd(combined_data)
+    quantile_val = np.nanquantile(combined_data, q)
+
+    if ret == 2:
+        fig, ax = plt.subplots()
+        ax.hist(combined_data[~np.isnan(combined_data)],
+                bins=50, density=True, alpha=0.6, color="blue", histtype='stepfilled')
+        x = np.linspace(np.nanmin(combined_data), np.nanmax(combined_data), 200)
+        ax.plot(x, (1/(sd_val*np.sqrt(2*np.pi))) * np.exp(-0.5*((x-mean_val)/sd_val)**2),
+                color="red", label="Normal fit")
+        ax.set_title("Overall data distribution and norm fit")
+        ax.set_xlabel("log2 Intensity")
+        ax.set_ylabel("Density")
+        ax.legend()
+        return fig
+
+    if sample_wise:
+        for col in annotated_columns:
+            col_vals = data_filtered[col]
+            col_sd = np.nanstd(col_vals)
+            num_na = col_vals.isna().sum()
+            col_quantile_val = np.nanquantile(col_vals, q)
+            if num_na > 0:
+                data_filtered.loc[col_vals.isna(), col] = np.random.normal(col_quantile_val, col_sd, num_na)
+    else:
+        for col in annotated_columns:
+            col_vals = data_filtered[col]
+            num_na = col_vals.isna().sum()
+            if num_na > 0:
+                data_filtered.loc[col_vals.isna(), col] = np.random.normal(quantile_val, sd_val*adj_std, num_na)
+
+    imputed_data = data_filtered[missing_value_mask]
+    non_imputed_data = data_filtered[~missing_value_mask]
+    imputed_combined = imputed_data.values.flatten()
+    non_imputed_combined = non_imputed_data.values.flatten()
+
+    if ret == 3:
+        fig, ax = plt.subplots()
+        ax.hist([non_imputed_combined, imputed_combined],
+                bins=50, density=True, alpha=0.6, histtype='stepfilled',
+                label=["Non-Imputed Values", "Imputed Values"])
+        ax.legend()
+        ax.set_title("Distribution of data after imputation")
+        ax.set_xlabel("log2 Intensity")
+        ax.set_ylabel("Density")
+        return fig
+
+    data_imputed = data.copy()
+    data_imputed[annotated_columns] = data_filtered
+    return data_imputed
 
 
 #QC FUNCTIONS

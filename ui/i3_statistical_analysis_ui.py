@@ -32,9 +32,9 @@ def volcano_plot_ui():
         test_type = st.selectbox("Test Type:", options=["Unpaired", "Paired"], key="paired10")
 
         available_levels = []
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        if any(k in st.session_state for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"]) and "meta" in st.session_state:
             available_levels.append("Protein")
-        if "log2_data3" in st.session_state and "meta2" in st.session_state:
+        if any(k in st.session_state for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]) and "meta2" in st.session_state:
             available_levels.append("Phosphosite")
 
         if not available_levels:
@@ -47,16 +47,21 @@ def volcano_plot_ui():
         st.subheader("Conditions")
 
         if level == "Protein":
-            data_key, meta_key = "log2_data", "meta"
+            meta_key = "meta"
+            data_keys = ["imputed_log2_data", "filtered_log2_data", "log2_data"]
         else:
-            data_key, meta_key = "log2_data3", "meta2"
+            meta_key = "meta2"
+            data_keys = ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]
 
-        conditions_list = []
-        if data_key in st.session_state and meta_key in st.session_state:
-            meta_df = st.session_state[meta_key]
-            if not meta_df.empty:
-                counts = meta_df['condition'].value_counts()
-                conditions_list = sorted(counts[counts >= 2].index.tolist())
+        data_key = next((k for k in data_keys if k in st.session_state), None)
+
+        if not data_key:
+            st.warning("No data available for the selected level.")
+            return
+
+        meta_df = st.session_state[meta_key]
+        counts = meta_df['condition'].value_counts()
+        conditions_list = sorted(counts[counts >= 2].index.tolist())
 
         condition1 = st.selectbox("Condition 1:", options=conditions_list, key="condition1_10")
         condition2 = st.selectbox("Condition 2:", options=conditions_list, key="condition2_10")
@@ -67,7 +72,7 @@ def volcano_plot_ui():
         if condition1 and condition2 and condition1 != condition2:
             volcano_df = volcano_data_f(
                 st.session_state[data_key],
-                st.session_state[meta_key],
+                meta_df,
                 condition1=condition1,
                 condition2=condition2,
                 in_pval=pval_threshold,
@@ -178,13 +183,12 @@ def simulation_ui():
         st.subheader("Thresholds")
         pval_threshold = st.number_input("P-value threshold:", value=0.05, step=0.01, key="in_pval10.5")
         log2fc_threshold = st.number_input("log₂ FC threshold:", value=1.0, step=0.1, key="in_log2fc10.5")
-
         st.markdown("---")
 
         available_levels = []
-        if "log2_data" in st.session_state and "meta" in st.session_state:
+        if any(k in st.session_state for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"]) and "meta" in st.session_state:
             available_levels.append("Protein")
-        if "log2_data3" in st.session_state and "meta2" in st.session_state:
+        if any(k in st.session_state for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]) and "meta2" in st.session_state:
             available_levels.append("Phosphosite")
 
         if not available_levels:
@@ -192,7 +196,6 @@ def simulation_ui():
             return
 
         level = st.selectbox("Level:", options=available_levels, key="level10.5")
-
         st.markdown("---")
 
         mod_var = st.slider("Variance multiplier:", min_value=0.25, max_value=4.0, value=1.0, step=0.05, key="mod_var10.5")
@@ -202,14 +205,20 @@ def simulation_ui():
         st.subheader("Conditions")
 
         if level == "Protein":
-            meta_df = st.session_state.meta if "meta" in st.session_state else None
+            meta_key = "meta"
+            data_keys = ["imputed_log2_data", "filtered_log2_data", "log2_data"]
         else:
-            meta_df = st.session_state.meta2 if "meta2" in st.session_state else None
+            meta_key = "meta2"
+            data_keys = ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]
 
-        conditions_list = []
-        if meta_df is not None and not meta_df.empty:
-            counts = meta_df['condition'].value_counts()
-            conditions_list = sorted(counts[counts >= 2].index.tolist())
+        data_key = next((k for k in data_keys if k in st.session_state), None)
+        if not data_key:
+            st.warning("No data available for the selected level.")
+            return
+
+        meta_df = st.session_state[meta_key]
+        counts = meta_df['condition'].value_counts()
+        conditions_list = sorted(counts[counts >= 2].index.tolist())
 
         condition1 = st.selectbox("Condition 1:", options=conditions_list, key="condition1_10.5")
         condition2 = st.selectbox("Condition 2:", options=conditions_list, key="condition2_10.5")
@@ -217,24 +226,18 @@ def simulation_ui():
         st.markdown("---")
         st.subheader("Simulation Volcano Plot")
 
-        data_key = "log2_data" if level == "Protein" else "log2_data3"
-        meta_key = "meta" if level == "Protein" else "meta2"
-
         if condition1 and condition2 and condition1 != condition2:
-            if data_key in st.session_state and meta_key in st.session_state:
-                fig = volcano_plot_sim(
-                    data=st.session_state[data_key],
-                    meta=st.session_state[meta_key],
-                    condition1=condition1,
-                    condition2=condition2,
-                    in_pval=pval_threshold,
-                    in_log2fc=log2fc_threshold,
-                    workflow=level,
-                    mod_var=mod_var,
-                    mod_n=mod_n
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("No data loaded for the selected level.")
+            fig = volcano_plot_sim(
+                data=st.session_state[data_key],
+                meta=meta_df,
+                condition1=condition1,
+                condition2=condition2,
+                in_pval=pval_threshold,
+                in_log2fc=log2fc_threshold,
+                workflow=level,
+                mod_var=mod_var,
+                mod_n=mod_n
+            )
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Please select two different conditions to generate the volcano plot.")
