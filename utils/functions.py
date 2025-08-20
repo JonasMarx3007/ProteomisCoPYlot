@@ -397,9 +397,9 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
 
 
 @st.cache_data
-def coverage_plot_pep(data2, meta, id=True, header=True, legend=True,
+def coverage_plot_pep(data, meta, id=True, header=True, legend=True,
                       plot_colors=None, width=10, height=6, dpi=100):
-    data2 = data2.copy()
+    data = data.copy()
     meta = meta.copy()
 
     meta['sample'] = meta['sample'].astype(str)
@@ -412,8 +412,8 @@ def coverage_plot_pep(data2, meta, id=True, header=True, legend=True,
         meta['new_sample'] = meta.groupby('condition').cumcount() + 1
         meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'].astype(str)
 
-    if "File.Name" in data2.columns:
-        df_wide = data2.pivot_table(
+    if "File.Name" in data.columns:
+        df_wide = data.pivot_table(
             index="File.Name",
             columns="Stripped.Sequence",
             values="Precursor.Quantity",
@@ -428,7 +428,7 @@ def coverage_plot_pep(data2, meta, id=True, header=True, legend=True,
         data_filtered = df_wide[["Stripped.Sequence"] + annotated_cols]
     else:
         rename_dict = dict(zip(meta['sample'], meta['new_sample']))
-        data_filtered = data2.rename(columns=rename_dict)
+        data_filtered = data.rename(columns=rename_dict)
         annotated_cols = [c for c in meta['new_sample'] if c in data_filtered.columns]
         data_filtered = data_filtered[annotated_cols]
 
@@ -512,9 +512,9 @@ def missing_value_plot(data, meta, bin=0, header=True, text=True, text_size=3.88
 
 
 @st.cache_data
-def missing_value_plot_prec(data2, meta, bin=0, header=True, text=True,
+def missing_value_plot_prec(data, meta, bin=0, header=True, text=True,
                             text_size=8, width=10, height=6, dpi=100):
-    df_wide = data2.pivot_table(
+    df_wide = data.pivot_table(
         index='File.Name',
         columns='Precursor.Id',
         values='Precursor.Quantity',
@@ -563,10 +563,10 @@ def missing_value_plot_prec(data2, meta, bin=0, header=True, text=True,
 
 
 @st.cache_data
-def missing_value_plot_pep(data2, meta, bin=0, header=True, text=True,
+def missing_value_plot_pep(data, meta, bin=0, header=True, text=True,
                            text_size=8, width=10, height=6, dpi=100):
-    if "File.Name" in data2.columns:
-        df_wide = data2.pivot_table(
+    if "File.Name" in data.columns:
+        df_wide = data.pivot_table(
             index='File.Name',
             columns='Stripped.Sequence',
             values='Precursor.Quantity',
@@ -575,7 +575,7 @@ def missing_value_plot_pep(data2, meta, bin=0, header=True, text=True,
         df_wide = df_wide.T
         df_wide.columns = df_wide.columns.map(lambda x: extract_id_or_number(x))
     else:
-        df_wide = data2.copy()
+        df_wide = data.copy()
 
     meta['sample'] = meta['sample'].map(lambda x: extract_id_or_number(x))
     annotated_columns = meta['sample'].tolist()
@@ -1474,8 +1474,6 @@ def missed_cleavage_plot(data2, meta, id=True, text=True, text_size=8, header=Tr
 @st.cache_data
 def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, legend=True,
                       workflow="Protein", plot_colors=None, width=10, height=6, dpi=100):
-    import matplotlib.pyplot as plt
-
     meta = meta.copy()
     data = data.copy()
     meta["sample"] = meta["sample"].astype(str)

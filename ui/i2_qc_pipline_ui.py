@@ -87,7 +87,7 @@ def coverage_plot_ui():
         if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = plot_func(
-                    data2=data_to_use,
+                    data=data_to_use,
                     meta=meta_to_use,
                     id=toggle_id,
                     header=toggle_header,
@@ -161,7 +161,7 @@ def missing_value_plot_ui():
         if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = plot_func(
-                    data2=data_to_use if level in ["Precursor", "Peptide"] else data_to_use,
+                    data=data_to_use if level in ["Precursor", "Peptide"] else data_to_use,
                     meta=meta_to_use,
                     bin=bin_val,
                     header=header_toggle,
