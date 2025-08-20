@@ -153,7 +153,51 @@ def missing_value_plot_ui():
         height = st.number_input("Height (cm):", value=10, key="plotHeight4")
         dpi = st.number_input("DPI:", value=300, key="plotDPI4")
         file_format = st.selectbox("Download Format:", ["png", "jpg", "svg", "pdf"], key="missValPlotFormat")
-        st.download_button("Download Plot", data="", file_name=f"missval_plot.{file_format}", key="downloadMissValPlot")
+
+        if "data" in st.session_state or "data2" in st.session_state or "data3" in st.session_state:
+            try:
+                if level == "Protein":
+                    data_to_use = st.session_state.get("data", None)
+                    meta_to_use = st.session_state.get("meta", None)
+                    plot_func = missing_value_plot
+                elif level == "Peptide":
+                    data_to_use = st.session_state.get("data2", None)
+                    meta_to_use = st.session_state.get("meta", None)
+                    plot_func = missing_value_plot_pep
+                elif level == "Precursor":
+                    data_to_use = st.session_state.get("data2", None)
+                    meta_to_use = st.session_state.get("meta", None)
+                    plot_func = missing_value_plot_prec
+                elif level == "Phosphosite":
+                    data_to_use = st.session_state.get("data3", None)
+                    meta_to_use = st.session_state.get("meta2", None)
+                    plot_func = missing_value_plot
+
+                fig = plot_func(
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    bin=bin_val,
+                    header=header_toggle,
+                    text=text_toggle,
+                    text_size=text_size,
+                    width=width / 2.54,
+                    height=height / 2.54,
+                    dpi=dpi
+                )
+
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+                st.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"missval_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
+            except Exception as e:
+                st.error(f"Error generating missing value plot: {e}")
+
         st.markdown("---")
         position = st.selectbox("Position:", ["Above", "Below"], key="textPosition4")
         annotation_text = st.text_area("Annotation Text:", key="text4")
@@ -181,7 +225,7 @@ def missing_value_plot_ui():
         if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = plot_func(
-                    data=data_to_use if level in ["Precursor", "Peptide"] else data_to_use,
+                    data=data_to_use,
                     meta=meta_to_use,
                     bin=bin_val,
                     header=header_toggle,
@@ -222,10 +266,12 @@ def histogram_intensity_ui():
         height_cm = st.number_input("Height (cm):", value=10, key="plotHeight5")
         dpi = st.number_input("DPI:", value=300, key="plotDPI5")
         file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat5")
-        st.download_button("Download Plot", data=b"", file_name=f"hist_intensity.{file_format}", key="downloadHistIntPlot")
+
+        download_placeholder = st.empty()
+
         st.markdown("---")
-        position = st.selectbox("Position:", ["Above", "Below"], key="textPosition5")
-        annotation_text = st.text_area("Annotation Text:", key="text5")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition5")
+        st.text_area("Annotation Text:", key="text5")
         st.button("Add", key="addText5")
         st.button("Delete", key="deleteText5")
 
@@ -243,7 +289,21 @@ def histogram_intensity_ui():
                 fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
                 histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax)
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"hist_intensity.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
+
             except Exception as e:
                 st.error(f"Error generating histogram intensity plot: {e}")
         else:
