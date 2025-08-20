@@ -17,7 +17,6 @@ def single_protein_ui():
 
 #SUB
 def protein_line_ui():
-    import io
     plot_colors = st.session_state.get("plot_colors", None)
 
     col1, col2 = st.columns([1, 2])
@@ -98,7 +97,6 @@ def protein_line_ui():
 
 
 def protein_box_ui():
-    import io
     plot_colors = st.session_state.get("plot_colors", None)
 
     col1, col2 = st.columns([1, 2])
