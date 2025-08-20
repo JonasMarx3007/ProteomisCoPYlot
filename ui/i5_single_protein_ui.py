@@ -17,14 +17,15 @@ def single_protein_ui():
 
 #SUB
 def protein_line_ui():
+    import io
     plot_colors = st.session_state.get("plot_colors", None)
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.checkbox("Toggle IDs", value=False, key="toggle_id18")
-        st.checkbox("Toggle Header", value=True, key="toggle_header18")
-        st.checkbox("Toggle Legend", value=True, key="toggle_legend18")
+        toggle_id = st.checkbox("Toggle IDs", value=False, key="toggle_id18")
+        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header18")
+        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend18")
 
         level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level18")
         protein_col = "ProteinNames" if level == "Protein" else "PTM_Collapse_key"
@@ -53,11 +54,12 @@ def protein_line_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="plotWidth18")
-        st.number_input("Height (cm):", value=10, key="plotHeight18")
-        st.number_input("DPI:", value=300, key="plotDPI18")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat18")
-        st.download_button("Download Plot", data="", file_name="protein_lineplot.png", key="downloadProteinLine")
+        width = st.number_input("Width (cm):", value=20, key="plotWidth18")
+        height = st.number_input("Height (cm):", value=10, key="plotHeight18")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI18")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat18")
+
+        download_placeholder = st.empty()
 
     with col2:
         if "log2_data" in st.session_state and "meta" in st.session_state:
@@ -67,16 +69,28 @@ def protein_line_ui():
                     meta=st.session_state.meta,
                     conditions=selected_conditions,
                     inputs=selected_proteins,
-                    id=st.session_state.get("toggle_id18", True),
-                    header=st.session_state.get("toggle_header18", True),
-                    legend=st.session_state.get("toggle_legend18", True),
+                    id=toggle_id,
+                    header=toggle_header,
+                    legend=toggle_legend,
                     workflow=level,
                     plot_colors=plot_colors,
-                    width=st.session_state.get("plotWidth18", 20) / 2.54,
-                    height=st.session_state.get("plotHeight18", 10) / 2.54,
-                    dpi=st.session_state.get("plotDPI18", 300)
+                    width=width / 2.54,
+                    height=height / 2.54,
+                    dpi=dpi
                 )
                 st.pyplot(fig)
+
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"protein_lineplot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
             else:
                 st.info("Select at least one protein and one condition.")
         else:
@@ -84,14 +98,15 @@ def protein_line_ui():
 
 
 def protein_box_ui():
+    import io
     plot_colors = st.session_state.get("plot_colors", None)
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        st.checkbox("Toggle Header", value=True, key="toggle_header17")
-        st.checkbox("Toggle Legend", value=True, key="toggle_legend17")
-        st.checkbox("Show Outliers", value=False, key="toggle_outliers17")
+        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header17")
+        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend17")
+        toggle_outliers = st.checkbox("Show Outliers", value=False, key="toggle_outliers17")
         st.markdown("---")
 
         level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level17")
@@ -121,11 +136,12 @@ def protein_box_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="plotWidth17")
-        st.number_input("Height (cm):", value=10, key="plotHeight17")
-        st.number_input("DPI:", value=300, key="plotDPI17")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat17")
-        st.download_button("Download Plot", data="", file_name="protein_boxplot.png", key="downloadProteinBox")
+        width = st.number_input("Width (cm):", value=20, key="plotWidth17")
+        height = st.number_input("Height (cm):", value=10, key="plotHeight17")
+        dpi = st.number_input("DPI:", value=300, key="plotDPI17")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat17")
+
+        download_placeholder = st.empty()
 
     with col2:
         if "log2_data" in st.session_state and "meta" in st.session_state:
@@ -140,15 +156,27 @@ def protein_box_ui():
                     data_filtered,
                     meta_filtered,
                     protein=selected_protein,
-                    outliers=st.session_state.get("toggle_outliers17", False),
-                    header=st.session_state.get("toggle_header17", True),
-                    legend=st.session_state.get("toggle_legend17", True),
+                    outliers=toggle_outliers,
+                    header=toggle_header,
+                    legend=toggle_legend,
                     plot_colors=plot_colors,
-                    width=st.session_state.get("plotWidth17", 20) / 2.54,
-                    height=st.session_state.get("plotHeight17", 10) / 2.54,
-                    dpi=st.session_state.get("plotDPI17", 300)
+                    width=width / 2.54,
+                    height=height / 2.54,
+                    dpi=dpi
                 )
                 st.pyplot(fig)
+
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"protein_boxplot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
             else:
                 st.info("Select a protein and at least one condition.")
         else:
