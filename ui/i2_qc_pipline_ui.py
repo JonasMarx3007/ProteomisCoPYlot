@@ -1,7 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
-from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary
 
 #MAIN
 def qc_pipeline_ui():
@@ -59,14 +59,16 @@ def coverage_plot_ui():
             st.info("No data available for plotting.")
             return
 
-        plot_type = st.selectbox("Type:", ["Normal", "Summary"], key="type3")
+        if level == "Peptide":
+            plot_type = "Normal"
+        else:
+            plot_type = st.selectbox("Type:", ["Normal", "Summary"], key="type3")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
         width = st.number_input("Width (cm):", value=20, key="plotWidth3")
         height = st.number_input("Height (cm):", value=10, key="plotHeight3")
         dpi = st.number_input("DPI:", value=300, key="plotDPI3")
-
         file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
 
         download_placeholder = st.empty()
@@ -81,29 +83,55 @@ def coverage_plot_ui():
         if level == "Protein":
             data_to_use = st.session_state.get("data", None)
             meta_to_use = st.session_state.get("meta", None)
-            plot_func = coverage_plot
         elif level == "Peptide":
             data_to_use = st.session_state.get("data2", None)
             meta_to_use = st.session_state.get("meta", None)
-            plot_func = coverage_plot_pep
         elif level == "Phosphosite":
             data_to_use = st.session_state.get("data3", None)
             meta_to_use = st.session_state.get("meta2", None)
-            plot_func = coverage_plot
+        else:
+            data_to_use, meta_to_use = None, None
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                fig = plot_func(
-                    data=data_to_use,
-                    meta=meta_to_use,
-                    id=toggle_id,
-                    header=toggle_header,
-                    legend=toggle_legend,
-                    width=width,
-                    height=height,
-                    dpi=dpi,
-                    plot_colors=st.session_state["selected_colors"]
-                )
+                if plot_type == "Normal":
+                    if level == "Peptide":
+                        fig = coverage_plot_pep(
+                            data=data_to_use,
+                            meta=meta_to_use,
+                            id=toggle_id,
+                            header=toggle_header,
+                            legend=toggle_legend,
+                            width=width,
+                            height=height,
+                            dpi=dpi,
+                            plot_colors=st.session_state["selected_colors"]
+                        )
+                    else:
+                        fig = coverage_plot(
+                            data=data_to_use,
+                            meta=meta_to_use,
+                            id=toggle_id,
+                            header=toggle_header,
+                            legend=toggle_legend,
+                            width=width,
+                            height=height,
+                            dpi=dpi,
+                            plot_colors=st.session_state["selected_colors"]
+                        )
+                else:
+                    fig = coverage_plot_summary(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        id=toggle_id,
+                        header=toggle_header,
+                        legend=toggle_legend,
+                        plot_colors=st.session_state["selected_colors"],
+                        width=width,
+                        height=height,
+                        dpi=dpi
+                    )
+
                 st.pyplot(fig)
 
                 import io

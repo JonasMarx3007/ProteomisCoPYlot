@@ -396,6 +396,112 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
 
 
 @st.cache_data
+def coverage_plot_summary(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
+    data = data.replace(0, np.nan)
+    meta = meta.copy()
+    meta["sample"] = meta["sample"].astype(str)
+    meta["id"] = meta["sample"].str.extract(r'(\d+|[A-Za-z]+)', expand=False)
+
+    if id:
+        meta["new_sample"] = [
+            f"{cond}_{i+1}\n({sid})"
+            for cond in meta["condition"].unique()
+            for i, sid in enumerate(meta.loc[meta["condition"] == cond, "id"])
+        ]
+    else:
+        meta["new_sample"] = [
+            f"{cond}_{i+1}"
+            for cond in meta["condition"].unique()
+            for i in range(len(meta.loc[meta["condition"] == cond]))
+        ]
+
+    rename_dict = dict(zip(meta["sample"], meta["new_sample"]))
+    data = data.rename(columns=rename_dict)
+    annotated_cols = meta["new_sample"].tolist()
+    data_filtered = data[annotated_cols]
+    data_binary = data_filtered.notna().astype(int)
+    melted = data_binary.melt(var_name="Sample", value_name="Value")
+    data_annotated = melted.merge(meta, left_on="Sample", right_on="new_sample")
+
+    sample_summary = (
+        data_annotated.groupby("Sample")
+        .agg(Value=("Value", "sum"), condition=("condition", "first"))
+        .reset_index()
+    )
+
+    condition_summary = (
+        sample_summary.groupby("condition")
+        .agg(mean_value=("Value", "mean"), sd_value=("Value", "std"))
+        .reset_index()
+    )
+
+    conditions = condition_summary["condition"].tolist()
+    if plot_colors is None:
+        plot_colors = plt.cm.tab10.colors
+    if len(plot_colors) < len(conditions):
+        plot_colors = (plot_colors * (len(conditions) // len(plot_colors) + 1))[:len(conditions)]
+    color_map = dict(zip(conditions, plot_colors))
+
+    fig, ax = plt.subplots(figsize=(width/2.54, height/2.54), dpi=dpi)
+    bar_positions = np.arange(len(conditions))
+    bar_means = condition_summary["mean_value"].values
+    bar_sds = condition_summary["sd_value"].values
+
+    ax.bar(
+        bar_positions,
+        bar_means,
+        yerr=bar_sds,
+        capsize=5,
+        color=[color_map[c] for c in conditions],
+        edgecolor="black"
+    )
+
+    rng = np.random.default_rng()
+    for i, cond in enumerate(conditions):
+        cond_values = sample_summary.loc[sample_summary["condition"] == cond, "Value"].values
+        jitter = rng.uniform(-0.2, 0.2, size=len(cond_values))
+        ax.scatter(
+            np.full(len(cond_values), bar_positions[i]) + jitter,
+            cond_values,
+            color="black",
+            alpha=0.7,
+            s=20,
+            zorder=3
+        )
+
+    plot_title, y_label = "", "Number"
+    red_line_value = None
+    if header:
+        if "ProteinNames" in data.columns:
+            plot_title = "Proteins per sample"
+            y_label = "Number of proteins"
+            red_line_value = len(data["ProteinNames"])
+            ax.axhline(red_line_value, linestyle="--", color="red")
+        elif "PTM_Collapse_key" in data.columns:
+            plot_title = "Phosphosites per sample"
+            y_label = "Number of phosphosites"
+            red_line_value = len(data["PTM_Collapse_key"])
+            ax.axhline(red_line_value, linestyle="--", color="red")
+
+    ax.set_title(plot_title)
+    ax.set_ylabel(y_label)
+    ax.set_xticks(bar_positions)
+    ax.set_xticklabels(conditions, rotation=45, ha="right")
+
+    if not legend:
+        ax.get_legend().remove()
+
+    ymax = max(
+        max(bar_means + np.nan_to_num(bar_sds, nan=0)),
+        red_line_value if red_line_value is not None else 0
+    )
+    ax.set_ylim(0, ymax * 1.1)
+
+    plt.tight_layout()
+    return fig
+
+
+@st.cache_data
 def coverage_plot_pep(data, meta, id=True, header=True, legend=True,
                       plot_colors=None, width=10, height=6, dpi=100):
     data = data.copy()

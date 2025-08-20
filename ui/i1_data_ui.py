@@ -93,12 +93,13 @@ def data_annotation_ui():
 
         color_palette_name = st.selectbox(
             "Choose a Predefined Palette (or Custom below):",
-            ["Default", "Yue7", "Custom"],
+            ["Default", "Yue7", "Spezi", "Custom"],
             key="color_palette"
         )
 
         palette_dict = {
             "Default": None,
+            "Spezi": ["#FCC72D", "#EA6D3D", "#E03A3C", "#CB1F73", "#383A6B"],
             "Yue7": ["#2D5F85", "#5184B2", "#AAD4F8", "#F2F5FA", "#F1A7B5", "#D55276", "#AB3A54"]
         }
 
