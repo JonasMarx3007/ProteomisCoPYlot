@@ -101,7 +101,8 @@ def coverage_plot_ui():
                     legend=toggle_legend,
                     width=width,
                     height=height,
-                    dpi=dpi
+                    dpi=dpi,
+                    plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 
@@ -287,7 +288,7 @@ def histogram_intensity_ui():
             try:
                 figsize = (width_cm / 2.54, height_cm / 2.54)
                 fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-                histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax)
+                histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax, plot_colors=st.session_state["selected_colors"])
                 st.pyplot(fig)
 
                 import io
@@ -364,6 +365,7 @@ def boxplot_intensity_ui():
                     width_cm=st.session_state.get("width6", 20),
                     height_cm=st.session_state.get("height6", 10),
                     dpi=st.session_state.get("dpi6", 300),
+                    plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 
@@ -440,6 +442,7 @@ def cov_plot_ui():
                     width_cm=st.session_state.get("width7", 20),
                     height_cm=st.session_state.get("height7", 10),
                     dpi=st.session_state.get("dpi7", 300),
+                    plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 
@@ -514,6 +517,7 @@ def principal_component_analysis_ui():
                     width_cm=width,
                     height_cm=height,
                     dpi=dpi,
+                    plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 
@@ -592,7 +596,8 @@ def abundance_plot_ui():
                     height_cm=height,
                     dpi=dpi,
                     legend=show_legend,
-                    header=show_header
+                    header=show_header,
+                    plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 

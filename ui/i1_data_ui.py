@@ -86,10 +86,19 @@ def data_annotation_ui():
             except Exception as e:
                 st.error(f"Failed to read phospho metadata: {e}")
 
-        st.markdown("---")
         st.header("Color Scheme")
-        st.selectbox("Choose a Color Palette:", ["Default", "Mario Document Input", "Default16", "Warm/Cold", "Black/Grey", "Yue7"], key="color_palette")
-        st.button("Reload All Plots", key="reloadButton")
+        color_palette_name = st.selectbox(
+            "Choose a Color Palette:",
+            ["Default", "Yue7"],
+            key="color_palette"
+        )
+
+        palette_dict = {
+            "Default": None,
+            "Yue7": ["#2D5F85", "#5184B2", "#AAD4F8", "#F2F5FA", "#F1A7B5", "#D55276", "#AB3A54"]
+        }
+
+        st.session_state["selected_colors"] = palette_dict.get(color_palette_name, palette_dict["Default"])
 
     with col2:
         st.subheader("Normal Data Condition Setup")

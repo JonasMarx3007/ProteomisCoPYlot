@@ -812,7 +812,7 @@ def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=N
 
 
 @st.cache_data
-def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, height_cm=10, dpi=100):
+def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, height_cm=10, dpi=100, plot_colors=None):
     meta['condition'] = pd.Categorical(meta['condition'], categories=meta['condition'].unique(), ordered=True)
     annotated_columns = meta['sample'].tolist()
     data_filtered = data[annotated_columns].dropna()
@@ -833,7 +833,7 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
     figsize = (width_cm / 2.54, height_cm / 2.54)
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
-    colors = plt.cm.tab10.colors
+    colors = plot_colors if plot_colors is not None else plt.cm.tab10.colors
     conditions = pca_scores['condition'].unique()
     color_map = {cond: colors[i % len(colors)] for i, cond in enumerate(conditions)}
 
