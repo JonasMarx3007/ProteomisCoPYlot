@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.functions import compare_prot_line, boxplot_int_single
-from io import BytesIO
+import io
 
 #MAIN
 def single_protein_ui():
