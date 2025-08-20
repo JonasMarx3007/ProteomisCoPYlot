@@ -87,9 +87,13 @@ def data_annotation_ui():
                 st.error(f"Failed to read phospho metadata: {e}")
 
         st.header("Color Scheme")
+
+        if "custom_colors_vector" not in st.session_state:
+            st.session_state["custom_colors_vector"] = []
+
         color_palette_name = st.selectbox(
-            "Choose a Color Palette:",
-            ["Default", "Yue7"],
+            "Choose a Predefined Palette (or Custom below):",
+            ["Default", "Yue7", "Custom"],
             key="color_palette"
         )
 
@@ -98,7 +102,18 @@ def data_annotation_ui():
             "Yue7": ["#2D5F85", "#5184B2", "#AAD4F8", "#F2F5FA", "#F1A7B5", "#D55276", "#AB3A54"]
         }
 
-        st.session_state["selected_colors"] = palette_dict.get(color_palette_name, palette_dict["Default"])
+        if color_palette_name == "Custom":
+            picked_color = st.color_picker("Pick a color to add", "#000000")
+            if st.button("Add Color"):
+                if picked_color not in st.session_state["custom_colors_vector"]:
+                    st.session_state["custom_colors_vector"].append(picked_color)
+            if st.button("Clear Colors"):
+                st.session_state["custom_colors_vector"] = []
+
+            st.write("Selected Colors:", st.session_state["custom_colors_vector"])
+            st.session_state["selected_colors"] = st.session_state["custom_colors_vector"]
+        else:
+            st.session_state["selected_colors"] = palette_dict.get(color_palette_name, palette_dict["Default"])
 
     with col2:
         st.subheader("Normal Data Condition Setup")
