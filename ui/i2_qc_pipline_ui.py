@@ -1,5 +1,6 @@
 import streamlit as st
 import matplotlib.pyplot as plt
+import io
 from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep
 
 #MAIN
@@ -49,21 +50,27 @@ def coverage_plot_ui():
         toggle_id = st.checkbox("Toggle IDs", value=False, key="toggle_id3")
         toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header3")
         toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend3")
+
         st.markdown("---")
+
         if available_levels:
             level = st.selectbox("Level:", available_levels, key="level3")
         else:
             st.info("No data available for plotting.")
             return
 
-        st.selectbox("Type:", ["Normal", "Summary"], key="type3")
+        plot_type = st.selectbox("Type:", ["Normal", "Summary"], key="type3")
+
         st.markdown("---")
         st.header("Plot Size & Resolution")
         width = st.number_input("Width (cm):", value=20, key="plotWidth3")
         height = st.number_input("Height (cm):", value=10, key="plotHeight3")
         dpi = st.number_input("DPI:", value=300, key="plotDPI3")
+
         file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
-        st.download_button("Download Plot", data="", file_name=f"coverage_plot.{file_format}", key="downloadCoveragePlot")
+
+        download_placeholder = st.empty()
+
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="textPosition3")
         st.text_area("Annotation Text:", key="text3")
@@ -97,6 +104,19 @@ def coverage_plot_ui():
                     dpi=dpi
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"coverage_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
             except Exception as e:
                 st.error(f"Error generating coverage plot: {e}")
         else:

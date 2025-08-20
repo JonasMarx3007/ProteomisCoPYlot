@@ -124,7 +124,7 @@ def data_annotation_ui():
                 else:
                     st.error("No data loaded yet.")
 
-            filter_num = st.number_input("Filter: At least", value=3, min_value=1, key="filter_num")
+            filter_num = st.number_input("Filter: At least", value=3, min_value=0, key="filter_num")
             filterop = st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
             if st.button("Apply Filter", key="apply_filter"):
                 if "log2_data" in st.session_state:
