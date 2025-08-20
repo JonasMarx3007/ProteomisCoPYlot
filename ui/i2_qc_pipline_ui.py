@@ -324,20 +324,20 @@ def boxplot_intensity_ui():
             st.info("No data available for plotting.")
             return
 
-        st.checkbox("Show Outliers", value=False, key="outliers6")
-        st.checkbox("Show Header", value=True, key="header6")
-        st.checkbox("Show Legend", value=True, key="legend6")
+        show_outliers = st.checkbox("Show Outliers", value=False, key="outliers6")
+        show_header = st.checkbox("Show Header", value=True, key="header6")
+        show_legend = st.checkbox("Show Legend", value=True, key="legend6")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level6")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="width6")
-        st.number_input("Height (cm):", value=10, key="height6")
-        st.number_input("DPI:", value=300, key="dpi6")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format6")
-        st.download_button("Download Plot", data=b"", file_name=f"boxplot_intensity.png", key="downloadBoxplot")
+        width = st.number_input("Width (cm):", value=20, key="width6")
+        height = st.number_input("Height (cm):", value=10, key="height6")
+        dpi = st.number_input("DPI:", value=300, key="dpi6")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format6")
+        download_placeholder = st.empty()
 
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="position6")
@@ -366,6 +366,19 @@ def boxplot_intensity_ui():
                     dpi=st.session_state.get("dpi6", 300),
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"boxplot_intensity.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating plot: {e}")
@@ -387,25 +400,20 @@ def cov_plot_ui():
             st.info("No data available for plotting.")
             return
 
-        st.checkbox("Show Outliers", value=False, key="outliers7")
-        st.checkbox("Show Header", value=True, key="header7")
-        st.checkbox("Show Legend", value=True, key="legend7")
+        show_outliers = st.checkbox("Show Outliers", value=False, key="outliers7")
+        show_header = st.checkbox("Show Header", value=True, key="header7")
+        show_legend = st.checkbox("Show Legend", value=True, key="legend7")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level7")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="width7")
-        st.number_input("Height (cm):", value=10, key="height7")
-        st.number_input("DPI:", value=300, key="dpi7")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format7")
-        st.download_button(
-            "Download Plot",
-            data=b"",
-            file_name=f"cov_plot.png",
-            key="downloadCovPlot"
-        )
+        width = st.number_input("Width (cm):", value=20, key="width7")
+        height = st.number_input("Height (cm):", value=10, key="height7")
+        dpi = st.number_input("DPI:", value=300, key="dpi7")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format7")
+        download_placeholder = st.empty()
 
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="position7")
@@ -434,6 +442,19 @@ def cov_plot_ui():
                     dpi=st.session_state.get("dpi7", 300),
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"cov_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating Coefficient of Variation plot: {e}")
@@ -455,24 +476,19 @@ def principal_component_analysis_ui():
             st.info("No data available for PCA plot.")
             return
 
-        st.checkbox("Show Legend", value=True, key="legend8")
-        st.checkbox("Show Header", value=True, key="header8")
+        show_legend = st.checkbox("Show Legend", value=True, key="legend8")
+        show_header = st.checkbox("Show Header", value=True, key="header8")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level8")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="width8")
-        st.number_input("Height (cm):", value=10, key="height8")
-        st.number_input("DPI:", value=300, key="dpi8")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format8")
-        st.download_button(
-            "Download Plot",
-            data=b"",
-            file_name=f"pca_plot.png",
-            key="downloadPCAPlot"
-        )
+        width = st.number_input("Width (cm):", value=20, key="width8")
+        height = st.number_input("Height (cm):", value=10, key="height8")
+        dpi = st.number_input("DPI:", value=300, key="dpi8")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format8")
+        download_placeholder = st.empty()
 
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="position8")
@@ -493,13 +509,26 @@ def principal_component_analysis_ui():
                 fig = pca_plot(
                     data=data_to_use,
                     meta=meta_to_use,
-                    header=st.session_state.get("header8", True),
-                    legend=st.session_state.get("legend8", True),
-                    width_cm=st.session_state.get("width8", 20),
-                    height_cm=st.session_state.get("height8", 10),
-                    dpi=st.session_state.get("dpi8", 300),
+                    header=show_header,
+                    legend=show_legend,
+                    width_cm=width,
+                    height_cm=height,
+                    dpi=dpi,
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"pca_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating PCA plot: {e}")
@@ -521,24 +550,19 @@ def abundance_plot_ui():
             st.info("No data available for abundance plot.")
             return
 
-        st.checkbox("Show Legend", value=True, key="legend9")
-        st.checkbox("Show Header", value=True, key="header9")
+        show_legend = st.checkbox("Show Legend", value=True, key="legend9")
+        show_header = st.checkbox("Show Header", value=True, key="header9")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level9")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        st.number_input("Width (cm):", value=20, key="width9")
-        st.number_input("Height (cm):", value=10, key="height9")
-        st.number_input("DPI:", value=300, key="dpi9")
-        st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format9")
-        st.download_button(
-            "Download Plot",
-            data=b"",
-            file_name=f"abundance_plot.{st.session_state.get('format9','png')}",
-            key="downloadAbPlot9"
-        )
+        width = st.number_input("Width (cm):", value=20, key="width9")
+        height = st.number_input("Height (cm):", value=10, key="height9")
+        dpi = st.number_input("DPI:", value=300, key="dpi9")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format9")
+        download_placeholder = st.empty()
 
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="position9")
@@ -564,13 +588,26 @@ def abundance_plot_ui():
                     data=data_to_use,
                     meta=meta_to_use,
                     workflow=level,
-                    width_cm=st.session_state.get("width9", 20),
-                    height_cm=st.session_state.get("height9", 10),
-                    dpi=st.session_state.get("dpi9", 300),
-                    legend=st.session_state.get("legend9", True),
-                    header=st.session_state.get("header9", True)
+                    width_cm=width,
+                    height_cm=height,
+                    dpi=dpi,
+                    legend=show_legend,
+                    header=show_header
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"abundance_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating abundance plot: {e}")
@@ -612,6 +649,8 @@ def correlation_plot_ui():
         width = st.number_input("Width (cm):", min_value=4, max_value=20, value=10, key="width12")
         height = st.number_input("Height (cm):", min_value=4, max_value=20, value=8, key="height12")
         dpi = st.number_input("DPI:", min_value=50, max_value=300, value=100, key="dpi12")
+        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format12")
+        download_placeholder = st.empty()
 
         st.markdown("---")
         st.selectbox("Position:", ["Above", "Below"], key="textPosition12")
@@ -633,13 +672,26 @@ def correlation_plot_ui():
                     data_to_use,
                     meta_to_use,
                     method=False,
-                    id=toggle_id,  # use the variable from the checkbox directly
+                    id=toggle_id,
                     full_range=False,
                     width=width,
                     height=height,
                     dpi=dpi
                 )
                 st.pyplot(fig)
+
+                import io
+                buf = io.BytesIO()
+                fig.savefig(buf, format=file_format, dpi=dpi)
+                buf.seek(0)
+
+                download_placeholder.download_button(
+                    "Download Plot",
+                    data=buf,
+                    file_name=f"correlation_plot.{file_format}",
+                    mime=f"image/{file_format}"
+                )
+
                 plt.close(fig)
             except Exception as e:
                 st.error(f"Error generating correlation plot: {e}")
