@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.functions import compare_prot_line, boxplot_int_single
+from io import BytesIO
 
 #MAIN
 def single_protein_ui():
@@ -15,84 +16,6 @@ def single_protein_ui():
 
 
 #SUB
-def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, legend=True,
-                      workflow="Protein", plot_colors=None, width=10, height=6, dpi=100):
-    meta = meta.copy()
-    data = data.copy()
-    meta["sample"] = meta["sample"].astype(str)
-
-    if id:
-        meta = (meta.groupby("condition", group_keys=False)
-                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}\n({g['sample'].iloc[i]})"
-                                                          for i in range(len(g))]))
-                    .reset_index(drop=True))
-    else:
-        meta = (meta.groupby("condition", group_keys=False)
-                    .apply(lambda g: g.assign(new_sample=[f"{g['condition'].iloc[i]}_{i+1}"
-                                                          for i in range(len(g))]))
-                    .reset_index(drop=True))
-
-    relevant_samples = meta["new_sample"].tolist()
-    rename_vector = dict(zip(meta["sample"], meta["new_sample"]))
-    data.rename(columns=rename_vector, inplace=True)
-
-    if workflow == "Protein":
-        data_filtered = data[data["ProteinNames"].isin(inputs)][["ProteinNames"] + relevant_samples]
-        data_melted = data_filtered.melt(id_vars="ProteinNames", var_name="Sample", value_name="Value")
-    elif workflow == "Phosphosite":
-        data_filtered = data[data["PTM_Collapse_key"].isin(inputs)][["PTM_Collapse_key"] + relevant_samples]
-        data_melted = data_filtered.melt(id_vars="PTM_Collapse_key", var_name="Sample", value_name="Value")
-    else:
-        raise ValueError("workflow must be 'Protein' or 'Phosphosite'")
-
-    data_melted = data_melted.merge(meta[["new_sample", "condition"]],
-                                    left_on="Sample", right_on="new_sample", how="left").dropna()
-
-    ordered_samples = []
-    for cond in conditions:
-        ordered_samples.extend(meta.loc[meta["condition"] == cond, "new_sample"].tolist())
-
-    sample_to_x = {s: i for i, s in enumerate(ordered_samples)}
-    data_melted["x"] = data_melted["Sample"].map(sample_to_x)
-
-    if workflow == "Protein":
-        data_melted["ProteinNames"] = data_melted["ProteinNames"].apply(lambda x: x.split(";")[0])
-
-    if plot_colors is None:
-        import matplotlib.pyplot as plt
-        plot_colors = plt.cm.tab10.colors
-
-    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
-
-    if workflow == "Protein":
-        for i, prot in enumerate(data_melted["ProteinNames"].unique()):
-            prot_data = data_melted[data_melted["ProteinNames"] == prot].sort_values("x")
-            ax.plot(prot_data["x"], prot_data["Value"], marker="o", label=prot,
-                    color=plot_colors[i % len(plot_colors)])
-    elif workflow == "Phosphosite":
-        for i, site in enumerate(data_melted["PTM_Collapse_key"].unique()):
-            site_data = data_melted[data_melted["PTM_Collapse_key"] == site].sort_values("x")
-            ax.plot(site_data["x"], site_data["Value"], marker="o", label=site,
-                    color=plot_colors[i % len(plot_colors)])
-
-    ax.set_xticks(range(len(ordered_samples)))
-    ax.set_xticklabels(ordered_samples, rotation=90)
-    ax.set_xlabel("Sample")
-    ax.set_ylabel("Log2 intensity")
-
-    if header:
-        ax.set_title(f"{workflow} Expression Across Samples")
-
-    if legend:
-        ax.legend(title=workflow, bbox_to_anchor=(1.05, 1), loc='upper left')
-
-    ax.grid(True)
-    plt.tight_layout()
-    fig.subplots_adjust(right=0.75)
-
-    return fig
-
-
 def protein_line_ui():
     plot_colors = st.session_state.get("plot_colors", None)
 
