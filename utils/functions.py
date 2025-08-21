@@ -1057,6 +1057,8 @@ def interactive_abundance_plot(data, meta, condition, workflow="Protein", search
         "log10Intensity": condition_means
     }).dropna()
 
+    mean_intensities["Feature"] = mean_intensities["Feature"].astype(str).str.split(";").str[0]
+
     mean_intensities = mean_intensities.sort_values("log10Intensity", ascending=False).reset_index(drop=True)
     mean_intensities["Rank"] = mean_intensities.index + 1
 
@@ -1064,26 +1066,32 @@ def interactive_abundance_plot(data, meta, condition, workflow="Protein", search
         search = []
     mean_intensities["Color"] = np.where(mean_intensities["Feature"].isin(search), "red", "blue")
 
+    mean_intensities["TextLabel"] = mean_intensities.apply(
+        lambda row: row["Feature"] if row["Feature"] in search else "",
+        axis=1
+    )
+
     fig = px.scatter(
         mean_intensities,
         x="Rank",
         y="log10Intensity",
         color="Color",
-        text="Feature",
+        text="TextLabel",
+        hover_data={"Feature": True, "Rank": True, "log10Intensity": True, "Color": False, "TextLabel": False},
         color_discrete_map={"red": "red", "blue": "blue"},
         title=f"Abundance plot - {condition}"
     )
 
-    fig.update_traces(marker=dict(size=5), textposition="top center")
+    fig.update_traces(marker=dict(size=6), textposition="top center")
+
     fig.update_layout(
         xaxis_title=f"{workflow} Rank",
         yaxis_title=f"log10 {workflow} Intensity",
         showlegend=False
     )
 
-    fig.add_traces(px.line(mean_intensities, x="Rank", y="log10Intensity").data)
-
     return fig
+
 
 
 @st.cache_data

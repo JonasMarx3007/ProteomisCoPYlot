@@ -1,7 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
-from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary, interactive_abundance_plot
 
 #MAIN
 def qc_pipeline_ui():
@@ -603,45 +603,58 @@ def abundance_plot_ui():
         st.button("Delete", key="deleteText9")
 
     with col2:
-        condition = st.selectbox("Choose Condition:", ["All Conditions"], key="condition9")
-        protein_choices = st.session_state.get("protein_choices", [])
-        selected_proteins = st.multiselect("Select Proteins:", options=protein_choices, key="protein9")
-
         if level == "Protein":
             data_to_use = st.session_state.get("org_data", None)
             meta_to_use = st.session_state.get("meta", None)
-        elif level == "Phosphosite":
+            feature_col = "ProteinNames"
+        else:
             data_to_use = st.session_state.get("org_data3", None)
             meta_to_use = st.session_state.get("meta2", None)
+            feature_col = "PTM_Collapse_key"
 
         if data_to_use is not None and meta_to_use is not None:
+            conditions = meta_to_use["condition"].unique().tolist()
+            condition = st.selectbox("Choose Condition:", ["All Conditions"] + conditions, key="condition9")
+
+            feature_choices = data_to_use[feature_col].dropna().unique().tolist()
+            selected_features = st.multiselect(f"Select {level}(s) to highlight:", options=feature_choices, key="feature9")
+
             try:
-                fig = abundance_plot(
-                    data=data_to_use,
-                    meta=meta_to_use,
-                    workflow=level,
-                    width_cm=width,
-                    height_cm=height,
-                    dpi=dpi,
-                    legend=show_legend,
-                    header=show_header,
-                    plot_colors=st.session_state["selected_colors"]
-                )
-                st.pyplot(fig)
+                if condition == "All Conditions":
+                    fig = abundance_plot(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        workflow=level,
+                        width_cm=width,
+                        height_cm=height,
+                        dpi=dpi,
+                        legend=show_legend,
+                        header=show_header,
+                        plot_colors=st.session_state["selected_colors"]
+                    )
+                    st.pyplot(fig)
 
-                import io
-                buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
-                buf.seek(0)
+                    import io
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format=file_format, dpi=dpi)
+                    buf.seek(0)
 
-                download_placeholder.download_button(
-                    "Download Plot",
-                    data=buf,
-                    file_name=f"abundance_plot.{file_format}",
-                    mime=f"image/{file_format}"
-                )
-
-                plt.close(fig)
+                    download_placeholder.download_button(
+                        "Download Plot",
+                        data=buf,
+                        file_name=f"abundance_plot.{file_format}",
+                        mime=f"image/{file_format}"
+                    )
+                    plt.close(fig)
+                else:
+                    fig = interactive_abundance_plot(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        condition=condition,
+                        workflow=level,
+                        search=selected_features
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
                 st.error(f"Error generating abundance plot: {e}")
         else:
