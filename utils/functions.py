@@ -18,6 +18,7 @@ import scipy.stats as stats
 from pathlib import Path
 import sys
 import matplotlib.ticker as mtick
+from matplotlib.patches import Ellipse
 
 
 #BASIC AND DATA FUNCTIONS
@@ -1095,7 +1096,7 @@ def interactive_abundance_plot(data, meta, condition, workflow="Protein", search
 
 
 @st.cache_data
-def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, height=8, dpi=100):
+def corr_plot(data, meta, method="Matrix", id=True, full_range=False, width=10, height=8, dpi=100):
     meta = meta.copy()
     meta['sample'] = meta['sample'].astype(str)
     meta['id'] = meta['sample'].apply(extract_id_or_number)
@@ -1122,10 +1123,45 @@ def corr_plot(data, meta, method=False, id=True, full_range=False, width=10, hei
     vmin, vmax = (-1, 1) if full_range else (ordered_corr.min().min(), ordered_corr.max().max())
 
     fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
-    cax = ax.matshow(ordered_corr, cmap='coolwarm', vmin=vmin, vmax=vmax)
-    plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=45, ha='left')
-    plt.yticks(range(len(ordered_corr.index)), ordered_corr.index)
-    fig.colorbar(cax)
+
+    if method == "Matrix":
+        cax = ax.matshow(ordered_corr, cmap='coolwarm', vmin=vmin, vmax=vmax)
+        plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=45, ha='left')
+        plt.yticks(range(len(ordered_corr.index)), ordered_corr.index)
+        fig.colorbar(cax)
+
+    elif method == "Ellipse":
+        n = len(ordered_corr)
+        ax.set_xlim(0, n)
+        ax.set_ylim(0, n)
+        ax.set_xticks(np.arange(n) + 0.5)
+        ax.set_yticks(np.arange(n) + 0.5)
+        ax.set_xticklabels(ordered_corr.columns, rotation=90, ha='center', va='top')
+        ax.set_yticklabels(ordered_corr.index)
+        ax.invert_yaxis()
+
+        for i in range(n):
+            for j in range(n):
+                r = ordered_corr.iloc[i, j]
+                width_ellipse = 0.9
+                height_ellipse = 0.9 * (1 - abs(r))
+                angle = 45 if r > 0 else -45
+                ellipse = Ellipse(
+                    (j + 0.5, i + 0.5),
+                    width=width_ellipse,
+                    height=height_ellipse,
+                    angle=angle,
+                    facecolor="red" if r > 0 else "blue",
+                    alpha=0.6
+                )
+                ax.add_patch(ellipse)
+
+        sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=plt.Normalize(vmin=-1, vmax=1))
+        fig.colorbar(sm, ax=ax)
+
+    else:
+        raise ValueError("method must be 'matrix' or 'ellipse'")
+
     plt.tight_layout()
     return fig
 

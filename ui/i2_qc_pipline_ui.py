@@ -675,11 +675,6 @@ def correlation_plot_ui():
             st.info("No data available for correlation plot.")
             return
 
-        change_display = st.checkbox(
-            "Change Display",
-            value=st.session_state.get("change_display12", False),
-            key="changeDisplay12"
-        )
 
         toggle_id = st.checkbox(
             "Toggle ID",
@@ -688,6 +683,12 @@ def correlation_plot_ui():
         )
 
         st.markdown("---")
+        method = st.selectbox(
+            "Correlation Plot Method:",
+            options=["Matrix", "Ellipse"],
+            index=0,
+            key="method12"
+        )
         level = st.selectbox("Level:", available_levels, key="level12")
 
         st.markdown("---")
@@ -711,13 +712,15 @@ def correlation_plot_ui():
         elif level == "Phosphosite":
             data_to_use = st.session_state.get("org_data3", None)
             meta_to_use = st.session_state.get("meta2", None)
+        else:
+            data_to_use, meta_to_use = None, None
 
         if data_to_use is not None and meta_to_use is not None:
             try:
                 fig = corr_plot(
-                    data_to_use,
-                    meta_to_use,
-                    method=False,
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    method=method,
                     id=toggle_id,
                     full_range=False,
                     width=width,
