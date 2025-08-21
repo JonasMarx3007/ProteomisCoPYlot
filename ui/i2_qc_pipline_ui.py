@@ -1,7 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
-from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary, interactive_abundance_plot
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary, interactive_abundance_plot, pca_plot_interactive
 
 #MAIN
 def qc_pipeline_ui():
@@ -514,6 +514,9 @@ def principal_component_analysis_ui():
         level = st.selectbox("Level:", available_levels, key="level8")
 
         st.markdown("---")
+        plot_type = st.selectbox("Plot Type:", ["Normal", "Interactive"], key="plot_type8")
+
+        st.markdown("---")
         st.header("Plot Size & Resolution")
         width = st.number_input("Width (cm):", value=20, key="width8")
         height = st.number_input("Height (cm):", value=10, key="height8")
@@ -537,35 +540,56 @@ def principal_component_analysis_ui():
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                fig = pca_plot(
-                    data=data_to_use,
-                    meta=meta_to_use,
-                    header=show_header,
-                    legend=show_legend,
-                    width_cm=width,
-                    height_cm=height,
-                    dpi=dpi,
-                    plot_colors=st.session_state["selected_colors"]
-                )
-                st.pyplot(fig)
+                if plot_type == "Normal":
+                    fig = pca_plot(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        header=show_header,
+                        legend=show_legend,
+                        width_cm=width,
+                        height_cm=height,
+                        dpi=dpi,
+                        plot_colors=st.session_state["selected_colors"]
+                    )
+                    st.pyplot(fig)
 
-                import io
-                buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
-                buf.seek(0)
+                    import io
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format=file_format, dpi=dpi)
+                    buf.seek(0)
 
-                download_placeholder.download_button(
-                    "Download Plot",
-                    data=buf,
-                    file_name=f"pca_plot.{file_format}",
-                    mime=f"image/{file_format}"
-                )
+                    download_placeholder.download_button(
+                        "Download Plot",
+                        data=buf,
+                        file_name=f"pca_plot.{file_format}",
+                        mime=f"image/{file_format}"
+                    )
 
-                plt.close(fig)
+                    plt.close(fig)
+
+                elif plot_type == "Interactive":
+                    fig = pca_plot_interactive(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        plot_colors=st.session_state["selected_colors"],
+                        header=show_header,
+                        legend=show_legend
+                    )
+
+                    cm_to_px = 96 / 2.54
+                    fig.update_layout(
+                        width=int(width * cm_to_px),
+                        height=int(height * cm_to_px),
+                        showlegend=show_legend
+                    )
+
+                    st.plotly_chart(fig, use_container_width=False)
+
             except Exception as e:
                 st.error(f"Error generating PCA plot: {e}")
         else:
             st.info("Please upload the corresponding data and metadata to see the plot.")
+
 
 
 def abundance_plot_ui():

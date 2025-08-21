@@ -965,6 +965,55 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
     return fig
 
 
+def pca_plot_interactive(data, meta, plot_colors=None, header=True, legend=True):
+    annotated_columns = meta["sample"].tolist()
+    data_filtered = data.loc[:, annotated_columns]
+    data_filtered = data_filtered.dropna()
+
+    transposed_expr = data_filtered.T
+    variances = transposed_expr.var(axis=0)
+    transposed_expr = transposed_expr.loc[:, variances > 0]
+
+    try:
+        pca = PCA(n_components=2)
+        pca_result = pca.fit_transform(transposed_expr)
+        explained_variance = pca.explained_variance_ratio_ * 100
+
+        pca_scores = pd.DataFrame(pca_result, columns=["PC1", "PC2"])
+        pca_scores["sample"] = transposed_expr.index
+        pca_scores = pca_scores.merge(meta, on="sample")
+
+        x_label = f"Principal Component 1 - {explained_variance[0]:.2f}% variance"
+        y_label = f"Principal Component 2 - {explained_variance[1]:.2f}% variance"
+
+        fig = px.scatter(
+            pca_scores,
+            x="PC1",
+            y="PC2",
+            color="condition",
+            color_discrete_sequence=plot_colors,
+            hover_data={"sample": True, "condition": True},
+            opacity=0.8
+        )
+
+        fig.update_traces(marker=dict(size=8))
+
+        layout_kwargs = dict(
+            xaxis=dict(title=x_label, zeroline=False),
+            yaxis=dict(title=y_label, zeroline=False),
+            showlegend=legend
+        )
+        if header:
+            layout_kwargs["title"] = "PCA Plot"
+
+        fig.update_layout(**layout_kwargs)
+        return fig
+
+    except Exception as e:
+        print(f"An error occurred during PCA computation: {e}")
+        return None
+
+
 @st.cache_data
 def abundance_plot(data, meta, workflow="Protein", plot_colors=None, width_cm=20, height_cm=10, dpi=300,
                    legend=True, header=True):
@@ -1094,7 +1143,6 @@ def interactive_abundance_plot(data, meta, condition, workflow="Protein", search
     return fig
 
 
-
 @st.cache_data
 def corr_plot(data, meta, method="Matrix", id=True, full_range=False, width=10, height=8, dpi=100):
     meta = meta.copy()
@@ -1126,7 +1174,7 @@ def corr_plot(data, meta, method="Matrix", id=True, full_range=False, width=10, 
 
     if method == "Matrix":
         cax = ax.matshow(ordered_corr, cmap='coolwarm', vmin=vmin, vmax=vmax)
-        plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=45, ha='left')
+        plt.xticks(range(len(ordered_corr.columns)), ordered_corr.columns, rotation=90, ha='center', va='bottom')
         plt.yticks(range(len(ordered_corr.index)), ordered_corr.index)
         fig.colorbar(cax)
 
