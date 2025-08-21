@@ -49,7 +49,7 @@ def log_ui():
 
     st.download_button(
         "Download Log CSV",
-        data=buf.getvalue().encode("utf-8"),  # convert to bytes
+        data=buf.getvalue().encode("utf-8"),
         file_name="system_variables_log.csv",
         mime="text/csv"
     )
