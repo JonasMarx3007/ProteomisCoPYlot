@@ -22,6 +22,15 @@ from matplotlib.patches import Ellipse
 
 
 #BASIC AND DATA FUNCTIONS
+def bool_to_str(value):
+    if value is True:
+        return "TRUE"
+    elif value is False:
+        return "FALSE"
+    else:
+        return ""
+
+
 def make_columns_unique(df):
     cols = pd.Series(df.columns)
     for dup in cols[cols.duplicated()].unique():
