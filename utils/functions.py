@@ -1909,54 +1909,113 @@ def phossite_coverage_plot(data, meta, id=False, header=True, legend=True, width
     notclassI_data = plot_data[plot_data["PTM_localization"] == "Not Class I"]
 
     x = range(len(annotated_columns))
-    ax.bar(x, classI_data["count"], label="Class I", color="blue")
-    ax.bar(x, notclassI_data["count"], bottom=classI_data["count"], label="Not Class I", color="orange")
+    bars1 = ax.bar(x, classI_data["count"], color="blue", label="Class I")
+    bars2 = ax.bar(x, notclassI_data["count"], bottom=classI_data["count"], color="orange", label="Not Class I")
 
     ax.set_xticks(x)
     ax.set_xticklabels(meta["new_sample"], rotation=90, fontsize=5)
     ax.set_xlabel("Sample")
     ax.set_ylabel(y_label)
     ax.set_title(plot_title)
+
     if legend:
-        ax.legend()
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
     plt.tight_layout()
     return fig
 
 
 @st.cache_data
-def simple_phos_site_plot(data, filter_value=0, width=6, height=4, dpi=100):
-    data = data[data["PTM_localization"] >= filter_value].copy()
+def phossite_coverage_plot_summary(data, meta, header=True, legend=True, width=20, height=10, dpi=300):
+    meta = meta.copy()
+    meta["sample"] = meta["sample"].astype(str)
 
-    phosprot = data["Protein_group"].nunique()
-    data["Seq"] = data["UPD_seq"].astype(str).str.replace(r"[^\w]", "", regex=True).str.upper()
-    phospep = data["Seq"].nunique()
-    phossite = data["PTM_Collapse_key"].nunique()
+    meta["new_sample"] = meta.groupby("condition").cumcount().add(1).astype(str)
+    meta["new_sample"] = meta.apply(lambda row: f'{row.condition}_{row["new_sample"]}', axis=1)
 
-    df = pd.DataFrame({
-        "term": ["Phosphoproteins", "Phosphopeptides", "Phosphosites"],
-        "count": [phosprot, phospep, phossite]
+    rename_vector = dict(zip(meta["sample"], meta["new_sample"]))
+    data = data.copy()
+    data.columns = [rename_vector.get(col, col) for col in data.columns]
+    annotated_columns = meta["new_sample"]
+
+    data_classI = data[data["PTM_localization"] >= 0.75][annotated_columns]
+    data_notclassI = data[data["PTM_localization"] < 0.75][annotated_columns]
+
+    count_classI = data_classI.notna().sum()
+    count_notclassI = data_notclassI.notna().sum()
+
+    plot_data = pd.DataFrame({
+        "sample": list(annotated_columns) * 2,
+        "PTM_localization": ["Class I"] * len(annotated_columns) + ["Not Class I"] * len(annotated_columns),
+        "count": list(count_classI) + list(count_notclassI)
     })
+    plot_data["condition"] = plot_data["sample"].str.extract(r'(^.*?)_')[0]
 
-    df = df.sort_values("count", ascending=False)
+    summarized_plot_data = plot_data.groupby(["condition", "PTM_localization"]).agg(
+        mean_count=("count", "mean"),
+        sd_count=("count", "std")
+    ).reset_index()
 
-    fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
+    plot_title = "Phosphosites per condition" if header else ""
+    y_label = "Number of phosphosites" if header else "Number"
 
-    ax.barh(df["term"], df["count"], color="skyblue")
-    for i, v in enumerate(df["count"]):
-        ax.text(v + max(df["count"]) * 0.01, i, str(v), color="black", fontweight="bold", va="center")
+    fig, ax = plt.subplots(figsize=(width / 2.54, height / 2.54), dpi=dpi)
 
-    ax.invert_yaxis()
-    ax.set_xticks([])
-    ax.set_xlabel("")
-    ax.set_ylabel("")
+    conditions = summarized_plot_data["condition"].unique()
+    locs = np.arange(len(conditions))
+    width_bar = 0.35
 
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_visible(True)
-    ax.spines["bottom"].set_visible(True)
-    ax.grid(False)
+    classI_means = summarized_plot_data[summarized_plot_data["PTM_localization"] == "Class I"]["mean_count"].values
+    classI_sd = summarized_plot_data[summarized_plot_data["PTM_localization"] == "Class I"]["sd_count"].values
+    notclassI_means = summarized_plot_data[summarized_plot_data["PTM_localization"] == "Not Class I"]["mean_count"].values
+    notclassI_sd = summarized_plot_data[summarized_plot_data["PTM_localization"] == "Not Class I"]["sd_count"].values
+
+    bars1 = ax.bar(locs - width_bar/2, classI_means, width=width_bar, yerr=classI_sd, capsize=3, color="blue", label="Class I")
+    bars2 = ax.bar(locs + width_bar/2, notclassI_means, width=width_bar, yerr=notclassI_sd, capsize=3, color="orange", label="Not Class I")
+
+    for i, condition in enumerate(conditions):
+        y_classI = plot_data[(plot_data["condition"] == condition) & (plot_data["PTM_localization"] == "Class I")]["count"].values
+        y_notclassI = plot_data[(plot_data["condition"] == condition) & (plot_data["PTM_localization"] == "Not Class I")]["count"].values
+        ax.scatter(np.random.normal(i - width_bar/2, 0.05, len(y_classI)), y_classI, color='black', alpha=0.7)
+        ax.scatter(np.random.normal(i + width_bar/2, 0.05, len(y_notclassI)), y_notclassI, color='black', alpha=0.7)
+
+    ax.set_xticks(locs)
+    ax.set_xticklabels(conditions, rotation=45, ha='right')
+    ax.set_ylabel(y_label)
+    ax.set_title(plot_title)
+
+    if legend:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
     plt.tight_layout()
     return fig
 
 
+@st.cache_data
+def simple_phos_site_plot(data, filter_value=0, width_cm=15, height_cm=10, dpi=100):
+    data = data[data["PTM_localization"] >= filter_value].copy()
+    phosprot = data["Protein_group"].nunique()
+    data["Seq"] = data["UPD_seq"].astype(str).str.replace(r"[^\w]", "", regex=True).str.upper()
+    phospep = data["Seq"].nunique()
+    phossite = data["PTM_Collapse_key"].nunique()
+    df = pd.DataFrame({
+        "term": ["Phosphoproteins", "Phosphopeptides", "Phosphosites"],
+        "count": [phosprot, phospep, phossite]
+    }).sort_values("count", ascending=False)
+    width_in = width_cm / 2.54
+    height_in = height_cm / 2.54
+    fig, ax = plt.subplots(figsize=(width_in, height_in), dpi=dpi)
+    ax.barh(df["term"], df["count"], color="skyblue")
+    for i, v in enumerate(df["count"]):
+        ax.text(v + max(df["count"]) * 0.01, i, str(v), color="black", fontweight="bold", va="center")
+    ax.invert_yaxis()
+    ax.set_xticks([])
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(True)
+    ax.spines["bottom"].set_visible(True)
+    ax.grid(False)
+    plt.tight_layout()
+    return fig
