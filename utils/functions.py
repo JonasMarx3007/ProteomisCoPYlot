@@ -360,13 +360,17 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
 
     rename_dict = dict(zip(meta['sample'], meta['new_sample']))
     data_filtered = data.rename(columns=rename_dict)
-    annotated_columns = meta['new_sample'].tolist()
+    annotated_columns = [c for c in meta['new_sample'].tolist() if c in data_filtered.columns]
+
+    if not annotated_columns:
+        raise ValueError("None of the annotated columns exist in the data after renaming.")
+
     data_filtered = data_filtered[annotated_columns]
     data_filtered = data_filtered.notna().astype(int)
     data_long = data_filtered.reset_index().melt(id_vars=data_filtered.index.name or None,
-                                                var_name='Sample', value_name='Value')
+                                                 var_name='Sample', value_name='Value')
     data_annotated = data_long.merge(meta[['new_sample', 'condition']],
-                                    left_on='Sample', right_on='new_sample')
+                                     left_on='Sample', right_on='new_sample')
     summary = data_annotated.groupby(['Sample', 'condition'], as_index=False)['Value'].sum()
     summary['Sample'] = pd.Categorical(summary['Sample'], categories=annotated_columns, ordered=True)
     summary['condition'] = pd.Categorical(summary['condition'], categories=conditions, ordered=True)
@@ -410,6 +414,7 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
         if ax.legend_:
             ax.legend_.remove()
         plt.subplots_adjust(right=0.95, top=0.88)
+
     return fig
 
 
