@@ -17,6 +17,123 @@ def report_function():
         f"<p>{version}</p>"
     ]
 
+    #Pep - Coverage
+    if "data2" in st.session_state and "meta" in st.session_state:
+        fig3pep = coverage_plot_pep(
+            data=st.session_state.get("data2"),
+            meta=st.session_state.get("meta"),
+            id=st.session_state.get("id3", False),
+            header=st.session_state.get("header3", True),
+            legend=st.session_state.get("legend3", True),
+            width=st.session_state.get("plotWidth3", 20),
+            height=st.session_state.get("plotHeight3", 10),
+            dpi=st.session_state.get("plotDPI3", 300),
+            plot_colors=st.session_state["selected_colors"]
+        )
+        fig3pep.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig3pep.savefig(buf, format="png", dpi=st.session_state.get("plotDPI3", 300), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append(f"<h2>1.1 Coverage Plot</h2>")
+        html_parts.append("<p>This plot coverage.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Pep - Missing Value
+    if "data2" in st.session_state and "meta" in st.session_state:
+        fig4pep = missing_value_plot_pep(
+            data=st.session_state.get("data2"),
+            meta=st.session_state.get("meta"),
+            bin=st.session_state.get("bins4", 0),
+            header=st.session_state.get("header4", True),
+            text=st.session_state.get("plotText4", True),
+            text_size=st.session_state.get("text_size4", 8),
+            width=st.session_state.get("plotWidth4", 20) / 2.54,
+            height=st.session_state.get("plotHeight4", 10) / 2.54,
+            dpi=st.session_state.get("plotDPI4", 300)
+        )
+
+        fig4pep.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig4pep.savefig(buf, format="png", dpi=st.session_state.get("plotDPI4", 300), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append(f"<h2>1.2 Missing Value Plot</h2>")
+        html_parts.append("<p>This plot show missing values.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Pep - RT
+    if "data2" in st.session_state and "meta" in st.session_state:
+        fig14 = rt_vs_pred_rt_plot(
+            st.session_state.get("data2"),
+            method=st.session_state.get("type14", "Scatter Plot"),
+            bins=st.session_state.get("bins14", 1000),
+            add_line=st.session_state.get("line14", False),
+            header=st.session_state.get("header14", True),
+            width=st.session_state.get("plotWidth14", 8),
+            height=st.session_state.get("plotHeight14", 6),
+            dpi=st.session_state.get("plotDPI14", 100)
+        )
+
+        fig14.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig14.savefig(buf, format="png", dpi=st.session_state.get("plotDPI14", 100), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append(f"<h2>1.3 RT Plot</h2>")
+        html_parts.append("<p>This plot something RT.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Pep - Mod
+    if "data2" in st.session_state and "meta" in st.session_state:
+        fig15 = modification_plot(
+            st.session_state.get("data2"),
+            st.session_state.get("meta"),
+            id=st.session_state.get("id15", False),
+            header=st.session_state.get("header15", True),
+            legend=st.session_state.get("legend15", True),
+            width=st.session_state.get("plotWidth15", 10),
+            height=st.session_state.get("plotHeight15", 6),
+            dpi=st.session_state.get("plotDPI15", 100),
+        )
+
+        fig15.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig15.savefig(buf, format="png", dpi=st.session_state.get("plotDPI15", 100), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append(f"<h2>1.4 Mod Plot</h2>")
+        html_parts.append("<p>This plot something Mods.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Pep - Missed
+    if "data2" in st.session_state and "meta" in st.session_state:
+        fig16 = missed_cleavage_plot(
+            st.session_state.get("data2"),
+            st.session_state.get("meta"),
+            text=st.session_state.get("plotText16", True),
+            text_size=st.session_state.get("text_size16", 8),
+            header=st.session_state.get("header16", True),
+            id=st.session_state.get("id16", True),
+            width=st.session_state.get("plotWidth16", 10),
+            height=st.session_state.get("plotHeight16", 6),
+            dpi=st.session_state.get("plotDPI16", 100),
+        )
+
+        fig16.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig16.savefig(buf, format="png", dpi=st.session_state.get("plotDPI16", 100), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append(f"<h2>1.4 Mod Plot</h2>")
+        html_parts.append("<p>This plot something Mods.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
     #Prot - Coverage
     if "data" in st.session_state and "meta" in st.session_state:
         if st.session_state.get("type3", "Normal") == "Normal":
@@ -66,6 +183,7 @@ def report_function():
                 height=st.session_state.get("plotHeight4", 10) / 2.54,
                 dpi=st.session_state.get("plotDPI4", 300)
             )
+
             fig4.set_size_inches(12, 6)
             buf = io.BytesIO()
             fig4.savefig(buf, format="png", dpi=st.session_state.get("plotDPI4", 300), bbox_inches="tight")
