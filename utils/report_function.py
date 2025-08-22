@@ -17,6 +17,58 @@ def report_function():
         f"<p>{version}</p>"
     ]
 
+    pep_num = 1
+
+    if "data2" in st.session_state:
+        prot_num = 2
+    else:
+        prot_num = 1
+
+    if "data2" and "data3" in st.session_state:
+        phos_num = 3
+    elif "data2" or "data3" in st.session_state:
+        phos_num = 2
+    else:
+        phos_num = 1
+
+    toc = []
+
+    if "data2" in st.session_state:
+        toc.append(f"<h1>{pep_num} Peptide Level Plots</h1>")
+        toc.append(f"<h2>{pep_num}.1 Coverage Plot</h2>")
+        toc.append(f"<h2>{pep_num}.2 Missing Value Plot</h2>")
+        toc.append(f"<h2>{pep_num}.3 Retention Time Plot</h2>")
+        toc.append(f"<h2>{pep_num}.4 Modification Plot</h2>")
+        toc.append(f"<h2>{pep_num}.5 Missed Cleavage Plot</h2>")
+
+    if "data" in st.session_state:
+        toc.append(f"<h1>{prot_num} Protein Level Plots</h1>")
+        toc.append(f"<h2>{prot_num}.1 Coverage Plot</h2>")
+        toc.append(f"<h2>{prot_num}.2 Missing Values Plot</h2>")
+        toc.append(f"<h2>{prot_num}.3 Histogram Intensity</h2>")
+        toc.append(f"<h2>{prot_num}.4 Boxplot Intensity</h2>")
+        toc.append(f"<h2>{prot_num}.5 Coefficient of Variation Plot</h2>")
+        toc.append(f"<h2>{prot_num}.6 PCA Plot</h2>")
+        toc.append(f"<h2>{prot_num}.7 Abundance Plot</h2>")
+        toc.append(f"<h2>{prot_num}.8 Correlation Plot</h2>")
+
+    if "data3" in st.session_state:
+        toc.append(f"<h1>{phos_num} Phosphosite Level Plots</h1>")
+        toc.append(f"<h2>{phos_num}.1 Overview Phosphosites</h2>")
+        toc.append(f"<h2>{phos_num}.2 Coverage Plot</h2>")
+        toc.append(f"<h2>{phos_num}.3 Coverage Plot</h2>")
+        toc.append(f"<h2>{phos_num}.4 Missed Value Plot</h2>")
+        toc.append(f"<h2>{phos_num}.5 Histogram Intensity</h2>")
+        toc.append(f"<h2>{phos_num}.6 Boxplot Intensity</h2>")
+        toc.append(f"<h2>{phos_num}.7 Coefficient of Variation Plot</h2>")
+        toc.append(f"<h2>{phos_num}.8 PCA Plot</h2>")
+        toc.append(f"<h2>{phos_num}.9 Abundance Plot</h2>")
+        toc.append(f"<h2>{phos_num}.10 Correlation Plot</h2>")
+
+    toc = "\n".join(toc)
+
+    html_parts.append(toc)
+
     #Pep - Coverage
     if "data2" in st.session_state and "meta" in st.session_state:
         fig3pep = coverage_plot_pep(
