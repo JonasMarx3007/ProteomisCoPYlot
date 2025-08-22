@@ -314,13 +314,20 @@ def histogram_intensity_ui():
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                figsize = (plotWidth / 2.54, plotHeight / 2.54)
-                fig, ax = plt.subplots(figsize=figsize, dpi=plotDPI)
-                histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax, plot_colors=st.session_state["selected_colors"])
+                fig = histo_int(
+                    data=data_to_use,
+                    meta=meta_to_use,
+                    header=header,
+                    legend=legend,
+                    width=plotWidth,
+                    height=plotHeight,
+                    dpi=plotDPI,
+                    plot_colors=st.session_state.get("selected_colors")
+                )
                 st.pyplot(fig)
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI, bbox_inches="tight")
                 buf.seek(0)
 
                 download_placeholder.download_button(

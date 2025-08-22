@@ -72,11 +72,16 @@ def report_function():
 
     #Prot - HistoInt
     if "log2_data" in st.session_state and "meta" in st.session_state:
-
-        figsize5 = (st.session_state.get("plotWidth5", 20) / 2.54, st.session_state.get("plotHeight5", 10) / 2.54)
-        fig, ax = plt.subplots(figsize=figsize5, dpi=st.session_state.get("plotDPI5", 300))
-        fig5 = histo_int(st.session_state.get("log2_data"), st.session_state.get("meta"), header=st.session_state.get("header5", True),
-                         legend=st.session_state.get("legend5", True), ax=ax, plot_colors=st.session_state.get("selected_colors", None))
+        fig5 = histo_int(
+            data=st.session_state.get("log2_data"),
+            meta=st.session_state.get("meta"),
+            header=st.session_state.get("header5", True),
+            legend=st.session_state.get("legend5", True),
+            width=st.session_state.get("plotWidth5", 20),
+            height=st.session_state.get("plotHeight5", 10),
+            dpi=st.session_state.get("plotDPI5", 300),
+            plot_colors=st.session_state.get("selected_colors", None)
+        )
 
         fig5.set_size_inches(12, 6)
         buf = io.BytesIO()

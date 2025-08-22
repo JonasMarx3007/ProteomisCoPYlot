@@ -19,6 +19,7 @@ from pathlib import Path
 import sys
 import matplotlib.ticker as mtick
 from matplotlib.patches import Ellipse
+from scipy.stats import gaussian_kde
 
 
 #BASIC AND DATA FUNCTIONS
@@ -736,13 +737,10 @@ def missing_value_plot_pep(data, meta, bin=0, header=True, text=True,
     return fig
 
 
-def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
-    import numpy as np
-    from scipy.stats import gaussian_kde
-    import matplotlib.pyplot as plt
-
-    if ax is None:
-        fig, ax = plt.subplots()
+def histo_int(data, meta, plot_colors=None, header=True, legend=True,
+              width=20, height=10, dpi=300):
+    figsize_inches = (width / 2.54, height / 2.54)
+    fig, ax = plt.subplots(figsize=figsize_inches, dpi=dpi)
 
     annotated_columns = meta['sample'].tolist()
     data_filtered = data[annotated_columns]
@@ -788,6 +786,8 @@ def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
         if leg is not None:
             leg.remove()
         plt.tight_layout()
+
+    return fig
 
 
 @st.cache_data
