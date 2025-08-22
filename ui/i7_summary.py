@@ -4,6 +4,7 @@ import io
 import csv
 from utils.functions import bool_to_str, number_to_str
 from utils.report_function import report_function
+import streamlit.components.v1 as components
 
 #MAIN
 def summary_ui():
@@ -91,9 +92,12 @@ def report_ui():
 
     if st.button("Generate HTML Report"):
         html_content = report_function()
+
         st.download_button(
             label="Download HTML Report",
             data=html_content,
             file_name="CoPYlot_report.html",
             mime="text/html"
         )
+
+        components.html(html_content, height=800, scrolling=True)

@@ -103,7 +103,7 @@ def report_function():
     if "log2_data" in st.session_state and "meta" in st.session_state:
         if st.session_state.get("mode6", "Mean") == "Mean":
             fig6 = boxplot_int(
-                data=st.session_state.get("data"),
+                data=st.session_state.get("log2_data"),
                 meta=st.session_state.get("meta"),
                 outliers=st.session_state.get("outliers6", False),
                 header=st.session_state.get("header6", True),
@@ -114,7 +114,7 @@ def report_function():
             )
         elif st.session_state.get("mode6", "Mean") == "Single":
             fig6 = boxplot_int_single(
-                data=st.session_state.get("data"),
+                data=st.session_state.get("log2_data"),
                 meta=st.session_state.get("meta"),
                 outliers=st.session_state.get("outliers6", False),
                 id=st.session_state.get("id6", True),
@@ -134,6 +134,98 @@ def report_function():
 
         html_parts.append("<h2>1.4 Boxplot Intensity Plot</h2>")
         html_parts.append("<p>Something about Boxplot Intensity.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Prot - Cov
+    if "org_data" in st.session_state and "meta" in st.session_state:
+        fig7 = cov_plot(
+            data=st.session_state.get("org_data"),
+            meta=st.session_state.get("meta"),
+            outliers=st.session_state.get("outliers7", False),
+            header=st.session_state.get("header7", True),
+            legend=st.session_state.get("legend7", True),
+            width_cm=st.session_state.get("plotWidth7", 20),
+            height_cm=st.session_state.get("plotHeight7", 10),
+            dpi=st.session_state.get("plotDPI7", 300),
+            plot_colors=st.session_state["selected_colors"]
+        )
+
+        fig7.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig7.savefig(buf, format="png", dpi=st.session_state.get("plotDPI7", 300), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append("<h2>1.5 Cov Plot</h2>")
+        html_parts.append("<p>Something about Cov.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Protein - PCA
+    if "log2_data" in st.session_state and "meta" in st.session_state:
+        fig8 = pca_plot(
+            data=st.session_state.get("log2_data"),
+            meta=st.session_state.get("meta"),
+            header=st.session_state.get("header8", True),
+            legend=st.session_state.get("legend8", True),
+            width_cm=st.session_state.get("plotWidth8", 20),
+            height_cm=st.session_state.get("plotHeight8", 10),
+            dpi=st.session_state.get("plotDPI8", 300),
+            plot_colors=st.session_state["selected_colors"]
+        )
+
+        fig8.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig8.savefig(buf, format="png", dpi=st.session_state.get("plotDPI8", 300), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append("<h2>1.6 PCA Plot</h2>")
+        html_parts.append("<p>Something about PCA.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    #Prot - Abundance
+    if "org_data" in st.session_state and "meta" in st.session_state:
+        fig9 = abundance_plot(
+            data=st.session_state.get("org_data"),
+            meta=st.session_state.get("meta"),
+            workflow="Protein",
+            width_cm=st.session_state.get("plotWidth9", 20),
+            height_cm=st.session_state.get("plotWidth9", 10),
+            dpi=st.session_state.get("plotDPI9", 300),
+            legend=st.session_state.get("legend9", True),
+            plot_colors=st.session_state["selected_colors"]
+        )
+
+        fig9.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig9.savefig(buf, format="png", dpi=st.session_state.get("plotDPI9", 300), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append("<h2>1.7 Abundance Plot</h2>")
+        html_parts.append("<p>Something about Abundance.</p>")
+        html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
+
+    if "org_data" in st.session_state and "meta" in st.session_state:
+        fig12 = corr_plot(
+            data=st.session_state.get("org_data"),
+            meta=st.session_state.get("meta"),
+            method=st.session_state.get("method12", "Matrix"),
+            id=st.session_state.get("legend12",False),
+            full_range=False,
+            width=st.session_state.get("plotWidth12", 10),
+            height=st.session_state.get("plotHeight12", 8),
+            dpi=st.session_state.get("plotDPI12", 100)
+        )
+
+        fig12.set_size_inches(12, 6)
+        buf = io.BytesIO()
+        fig12.savefig(buf, format="png", dpi=st.session_state.get("plotDPI12", 100), bbox_inches="tight")
+        buf.seek(0)
+        img_base64 = base64.b64encode(buf.read()).decode("utf-8")
+
+        html_parts.append("<h2>1.8 Heatmap</h2>")
+        html_parts.append("<p>Something about a Heatmap.</p>")
         html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
 
     html_parts.append("</body></html>")
