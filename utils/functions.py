@@ -519,11 +519,15 @@ def coverage_plot_pep(data, meta, id=True, header=True, legend=True,
     meta['id'] = meta['sample'].apply(extract_id_or_number)
 
     if id:
-        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'].astype(str) + "\n(" + meta['id'] + ")"
+        meta['new_sample'] = meta.groupby(meta['condition'].astype(str)).cumcount() + 1
+        meta['new_sample'] = (
+            meta['condition'].astype(str) + "_" +
+            meta['new_sample'].astype(str) + "\n(" +
+            meta['id'].astype(str) + ")"
+        )
     else:
-        meta['new_sample'] = meta.groupby('condition').cumcount() + 1
-        meta['new_sample'] = meta['condition'] + "_" + meta['new_sample'].astype(str)
+        meta['new_sample'] = meta.groupby(meta['condition'].astype(str)).cumcount() + 1
+        meta['new_sample'] = meta['condition'].astype(str) + "_" + meta['new_sample'].astype(str)
 
     if "File.Name" in data.columns:
         df_wide = data.pivot_table(
@@ -550,14 +554,14 @@ def coverage_plot_pep(data, meta, id=True, header=True, legend=True,
 
     plot_data = data_filtered.melt(id_vars="Stripped.Sequence", var_name="Sample", value_name="Value")
     summary = plot_data.groupby(['Sample']).agg({'Value': 'sum'}).reset_index()
-    summary["Sample"] = pd.Categorical(summary["Sample"], categories=meta["new_sample"], ordered=True)
+    summary["Sample"] = pd.Categorical(summary["Sample"], categories=meta["new_sample"].astype(str), ordered=True)
 
     fig, ax = plt.subplots(figsize=(width, height), dpi=dpi)
 
     colors = plot_colors if plot_colors is not None else plt.cm.tab10.colors
-    cond_order = meta['condition'].unique()
+    cond_order = meta['condition'].astype(str).unique()
     color_map = {cond: colors[i % len(colors)] for i, cond in enumerate(cond_order)}
-    bar_colors = [color_map[meta.loc[meta['new_sample']==s, 'condition'].values[0]] for s in summary['Sample']]
+    bar_colors = [color_map[meta.loc[meta['new_sample'] == str(s), 'condition'].values[0]] for s in summary['Sample']]
 
     ax.bar(summary['Sample'], summary['Value'], color=bar_colors)
     ax.axhline(y=data_filtered.shape[0], color='red', linestyle='--')
@@ -566,7 +570,7 @@ def coverage_plot_pep(data, meta, id=True, header=True, legend=True,
         ax.set_title("Peptides per sample")
 
     ax.set_xticks(range(len(meta["new_sample"])))
-    ax.set_xticklabels(meta["new_sample"], rotation=90)
+    ax.set_xticklabels(meta["new_sample"].astype(str), rotation=90)
 
     if legend:
         handles = [plt.Rectangle((0,0),1,1, color=color_map[cond]) for cond in cond_order]
@@ -1630,10 +1634,17 @@ def modification_plot(data2, meta, id=True, header=True, legend=True, width=10, 
 
     if id:
         meta["new_sample"] = meta.groupby("condition").cumcount() + 1
-        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str) + "\n (" + meta["id"] + ")"
+        meta["new_sample"] = (
+            meta["condition"].astype(str).str.strip() + "_" +
+            meta["new_sample"].astype(str).str.strip() +
+            "\n (" + meta["id"].astype(str).str.strip() + ")"
+        )
     else:
         meta["new_sample"] = meta.groupby("condition").cumcount() + 1
-        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str)
+        meta["new_sample"] = (
+            meta["condition"].astype(str).str.strip() + "_" +
+            meta["new_sample"].astype(str).str.strip()
+        )
 
     rename_dict = dict(zip(meta["id"], meta["new_sample"]))
     data2_wide = data2_wide.rename(columns=rename_dict)
@@ -1717,10 +1728,14 @@ def missed_cleavage_plot(data2, meta, id=True, text=True, text_size=8, header=Tr
 
     if id:
         meta["new_sample"] = meta.groupby("condition").cumcount() + 1
-        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str) + "\n(" + meta["id"] + ")"
+        meta["new_sample"] = (
+            meta["condition"].astype(str) + "_" +
+            meta["new_sample"].astype(str) + "\n(" +
+            meta["id"].astype(str) + ")"
+        )
     else:
         meta["new_sample"] = meta.groupby("condition").cumcount() + 1
-        meta["new_sample"] = meta["condition"] + "_" + meta["new_sample"].astype(str)
+        meta["new_sample"] = meta["condition"].astype(str) + "_" + meta["new_sample"].astype(str)
 
     rename_dict = dict(zip(meta["id"], meta["new_sample"]))
     df_wide = df_wide.rename(columns=rename_dict)

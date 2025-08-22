@@ -132,7 +132,6 @@ def coverage_plot_ui():
 
                 st.pyplot(fig)
 
-                import io
                 buf = io.BytesIO()
                 fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
