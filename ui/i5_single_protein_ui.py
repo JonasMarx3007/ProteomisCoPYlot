@@ -22,9 +22,9 @@ def protein_line_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        toggle_id = st.checkbox("Toggle IDs", value=False, key="toggle_id18")
-        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header18")
-        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend18")
+        id = st.checkbox("Toggle ID", value=False, key="id18")
+        header = st.checkbox("Toggle Header", value=True, key="header18")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend18")
 
         level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level18")
         protein_col = "ProteinNames" if level == "Protein" else "PTM_Collapse_key"
@@ -53,10 +53,10 @@ def protein_line_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="plotWidth18")
-        height = st.number_input("Height (cm):", value=10, key="plotHeight18")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI18")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat18")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth18")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight18")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI18")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat18")
 
         download_placeholder = st.empty()
 
@@ -68,26 +68,26 @@ def protein_line_ui():
                     meta=st.session_state.meta,
                     conditions=selected_conditions,
                     inputs=selected_proteins,
-                    id=toggle_id,
-                    header=toggle_header,
-                    legend=toggle_legend,
+                    id=id,
+                    header=header,
+                    legend=legend,
                     workflow=level,
                     plot_colors=plot_colors,
-                    width=width / 2.54,
-                    height=height / 2.54,
-                    dpi=dpi
+                    width=plotWidth / 2.54,
+                    height=plotHeight / 2.54,
+                    dpi=plotDPI
                 )
                 st.pyplot(fig)
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"protein_lineplot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"protein_lineplot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
             else:
@@ -102,9 +102,9 @@ def protein_box_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header17")
-        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend17")
-        toggle_outliers = st.checkbox("Show Outliers", value=False, key="toggle_outliers17")
+        header = st.checkbox("Toggle Header", value=True, key="header17")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend17")
+        outliers = st.checkbox("Toggle Outliers", value=False, key="outliers17")
         st.markdown("---")
 
         level = st.selectbox("Level:", options=["Protein", "Phosphosite"], key="level17")
@@ -134,10 +134,10 @@ def protein_box_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="plotWidth17")
-        height = st.number_input("Height (cm):", value=10, key="plotHeight17")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI17")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat17")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth17")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight17")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI17")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat17")
 
         download_placeholder = st.empty()
 
@@ -154,25 +154,25 @@ def protein_box_ui():
                     data_filtered,
                     meta_filtered,
                     protein=selected_protein,
-                    outliers=toggle_outliers,
-                    header=toggle_header,
-                    legend=toggle_legend,
+                    outliers=outliers,
+                    header=header,
+                    legend=legend,
                     plot_colors=plot_colors,
-                    width=width / 2.54,
-                    height=height / 2.54,
-                    dpi=dpi
+                    width=plotWidth / 2.54,
+                    height=plotHeight / 2.54,
+                    dpi=plotDPI
                 )
                 st.pyplot(fig)
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"protein_boxplot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"protein_boxplot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
             else:
