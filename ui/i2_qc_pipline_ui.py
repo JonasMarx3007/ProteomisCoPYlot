@@ -47,9 +47,9 @@ def coverage_plot_ui():
         available_levels.append("Phosphosite")
 
     with col1:
-        toggle_id = st.checkbox("Toggle IDs", value=False, key="toggle_id3")
-        toggle_header = st.checkbox("Toggle Header", value=True, key="toggle_header3")
-        toggle_legend = st.checkbox("Toggle Legend", value=True, key="toggle_legend3")
+        id = st.checkbox("Toggle IDs", value=False, key="id3")
+        header = st.checkbox("Toggle Header", value=True, key="header3")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend3")
 
         st.markdown("---")
 
@@ -66,10 +66,10 @@ def coverage_plot_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="plotWidth3")
-        height = st.number_input("Height (cm):", value=10, key="plotHeight3")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI3")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth3")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight3")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI3")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat3")
 
         download_placeholder = st.empty()
 
@@ -99,51 +99,51 @@ def coverage_plot_ui():
                         fig = coverage_plot_pep(
                             data=data_to_use,
                             meta=meta_to_use,
-                            id=toggle_id,
-                            header=toggle_header,
-                            legend=toggle_legend,
-                            width=width,
-                            height=height,
-                            dpi=dpi,
+                            id=id,
+                            header=header,
+                            legend=legend,
+                            width=plotWidth,
+                            height=plotHeight,
+                            dpi=plotDPI,
                             plot_colors=st.session_state["selected_colors"]
                         )
                     else:
                         fig = coverage_plot(
                             data=data_to_use,
                             meta=meta_to_use,
-                            id=toggle_id,
-                            header=toggle_header,
-                            legend=toggle_legend,
-                            width=width,
-                            height=height,
-                            dpi=dpi,
+                            id=id,
+                            header=header,
+                            legend=legend,
+                            width=plotWidth,
+                            height=plotHeight,
+                            dpi=plotDPI,
                             plot_colors=st.session_state["selected_colors"]
                         )
                 else:
                     fig = coverage_plot_summary(
                         data=data_to_use,
                         meta=meta_to_use,
-                        id=toggle_id,
-                        header=toggle_header,
-                        legend=toggle_legend,
+                        id=id,
+                        header=header,
+                        legend=legend,
                         plot_colors=st.session_state["selected_colors"],
-                        width=width,
-                        height=height,
-                        dpi=dpi
+                        width=plotWidth,
+                        height=plotHeight,
+                        dpi=plotDPI
                     )
 
                 st.pyplot(fig)
 
                 import io
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"coverage_plot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"coverage_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
             except Exception as e:
@@ -164,7 +164,7 @@ def missing_value_plot_ui():
         available_levels.append("Phosphosite")
 
     with col1:
-        header_toggle = st.checkbox("Toggle Header", value=True, key="toggle_header4")
+        header = st.checkbox("Toggle Header", value=True, key="header4")
         st.markdown("---")
         if available_levels:
             level = st.selectbox("Level:", available_levels, key="level4")
@@ -174,14 +174,14 @@ def missing_value_plot_ui():
 
         bin_val = st.number_input("Bin missing values (optional):", value=0, min_value=0, key="missValBin4")
         st.markdown("---")
-        text_toggle = st.checkbox("Toggle Text", value=True, key="toggle_text4")
+        plotText = st.checkbox("Toggle Text", value=True, key="plotText4")
         text_size = st.number_input("Text Size:", value=8, key="text_size4")
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="plotWidth4")
-        height = st.number_input("Height (cm):", value=10, key="plotHeight4")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI4")
-        file_format = st.selectbox("Download Format:", ["png", "jpg", "svg", "pdf"], key="missValPlotFormat")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth4")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight4")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI4")
+        plotFormat = st.selectbox("Download Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat4")
 
         if "data" in st.session_state or "data2" in st.session_state or "data3" in st.session_state:
             try:
@@ -206,22 +206,22 @@ def missing_value_plot_ui():
                     data=data_to_use,
                     meta=meta_to_use,
                     bin=bin_val,
-                    header=header_toggle,
-                    text=text_toggle,
+                    header=header,
+                    text=plotText,
                     text_size=text_size,
-                    width=width / 2.54,
-                    height=height / 2.54,
-                    dpi=dpi
+                    width=plotWidth / 2.54,
+                    height=plotHeight / 2.54,
+                    dpi=plotDPI
                 )
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
                 st.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"missval_plot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"missval_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
             except Exception as e:
@@ -257,12 +257,12 @@ def missing_value_plot_ui():
                     data=data_to_use,
                     meta=meta_to_use,
                     bin=bin_val,
-                    header=header_toggle,
-                    text=text_toggle,
+                    header=header,
+                    text=plotText,
                     text_size=text_size,
-                    width=width / 2.54,
-                    height=height / 2.54,
-                    dpi=dpi
+                    width=plotWidth / 2.54,
+                    height=plotHeight / 2.54,
+                    dpi=plotDPI
                 )
                 st.pyplot(fig)
             except Exception as e:
@@ -281,8 +281,8 @@ def histogram_intensity_ui():
         available_levels.append("Phosphosite")
 
     with col1:
-        header = st.checkbox("Show Header", value=True, key="toggle_header5")
-        legend = st.checkbox("Show Legend", value=True, key="toggle_legend5")
+        header = st.checkbox("Show Header", value=True, key="header5")
+        legend = st.checkbox("Show Legend", value=True, key="legend5")
         st.markdown("---")
         if available_levels:
             level = st.selectbox("Level:", available_levels, key="level5")
@@ -291,10 +291,10 @@ def histogram_intensity_ui():
             return
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width_cm = st.number_input("Width (cm):", value=20, key="plotWidth5")
-        height_cm = st.number_input("Height (cm):", value=10, key="plotHeight5")
-        dpi = st.number_input("DPI:", value=300, key="plotDPI5")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat5")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth5")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight5")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI5")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat5")
 
         download_placeholder = st.empty()
 
@@ -314,21 +314,21 @@ def histogram_intensity_ui():
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                figsize = (width_cm / 2.54, height_cm / 2.54)
-                fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+                figsize = (plotWidth / 2.54, plotHeight / 2.54)
+                fig, ax = plt.subplots(figsize=figsize, dpi=plotDPI)
                 histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax, plot_colors=st.session_state["selected_colors"])
                 st.pyplot(fig)
 
                 import io
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"hist_intensity.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"hist_intensity.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
@@ -353,10 +353,10 @@ def boxplot_intensity_ui():
             st.info("No data available for plotting.")
             return
 
-        show_outliers = st.checkbox("Show Outliers", value=False, key="outliers6")
-        show_header = st.checkbox("Show Header", value=True, key="toggle_header6")
-        show_id = st.checkbox("Show ID", value=True, key="show_id6")
-        show_legend = st.checkbox("Show Legend", value=True, key="toggle_legend6")
+        outliers = st.checkbox("Toggle Outliers", value=False, key="outliers6")
+        header = st.checkbox("Toggle Header", value=True, key="header6")
+        id = st.checkbox("Toggle ID", value=True, key="id6")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend6")
 
         st.markdown("---")
         mode = st.selectbox("Plot Type:", ["Mean", "Single"], key="mode6")
@@ -364,17 +364,17 @@ def boxplot_intensity_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="width6")
-        height = st.number_input("Height (cm):", value=10, key="height6")
-        dpi = st.number_input("DPI:", value=300, key="dpi6")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format6")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth6")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight6")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI6")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat6")
         download_placeholder = st.empty()
 
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="position6")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition6")
         st.text_area("Annotation Text:", key="text6")
-        st.button("Add", key="add6")
-        st.button("Delete", key="delete6")
+        st.button("Add", key="addText6")
+        st.button("Delete", key="deleteText6")
 
     with col2:
         if level == "Protein":
@@ -393,10 +393,10 @@ def boxplot_intensity_ui():
                         data=data_to_use,
                         meta=meta_to_use,
                         outliers=st.session_state.get("outliers6", False),
-                        header=st.session_state.get("toggle_header6", True),
-                        width_cm=st.session_state.get("width6", 20),
-                        height_cm=st.session_state.get("height6", 10),
-                        dpi=st.session_state.get("dpi6", 300),
+                        header=st.session_state.get("header6", True),
+                        width_cm=st.session_state.get("plotWidth6", 20),
+                        height_cm=st.session_state.get("plotHeight6", 10),
+                        dpi=st.session_state.get("plotDPI6", 300),
                         plot_colors=st.session_state["selected_colors"]
                     )
                 else:
@@ -404,12 +404,12 @@ def boxplot_intensity_ui():
                         data=data_to_use,
                         meta=meta_to_use,
                         outliers=st.session_state.get("outliers6", False),
-                        id=st.session_state.get("show_id6", True),
-                        header=st.session_state.get("toggle_header6", True),
-                        legend=st.session_state.get("toggle_legend6", True),
-                        width_cm=st.session_state.get("width6", 20),
-                        height_cm=st.session_state.get("height6", 10),
-                        dpi=st.session_state.get("dpi6", 300),
+                        id=st.session_state.get("id6", True),
+                        header=st.session_state.get("header6", True),
+                        legend=st.session_state.get("legend6", True),
+                        width_cm=st.session_state.get("plotWidth6", 20),
+                        height_cm=st.session_state.get("plotHeight6", 10),
+                        dpi=st.session_state.get("plotDPI6", 300),
                         plot_colors=st.session_state["selected_colors"]
                     )
 
@@ -417,14 +417,14 @@ def boxplot_intensity_ui():
 
                 import io
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"boxplot_intensity.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"boxplot_intensity.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
@@ -448,26 +448,26 @@ def cov_plot_ui():
             st.info("No data available for plotting.")
             return
 
-        show_outliers = st.checkbox("Show Outliers", value=False, key="outliers7")
-        show_header = st.checkbox("Show Header", value=True, key="header7")
-        show_legend = st.checkbox("Show Legend", value=True, key="legend7")
+        outliers = st.checkbox("Toggle Outliers", value=False, key="outliers7")
+        header = st.checkbox("Toggle Header", value=True, key="header7")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend7")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level7")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="width7")
-        height = st.number_input("Height (cm):", value=10, key="height7")
-        dpi = st.number_input("DPI:", value=300, key="dpi7")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format7")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth7")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight7")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI7")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat7")
         download_placeholder = st.empty()
 
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="position7")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition7")
         st.text_area("Annotation Text:", key="text7")
-        st.button("Add", key="add7")
-        st.button("Delete", key="delete7")
+        st.button("Add", key="addText7")
+        st.button("Delete", key="deleteText7")
 
     with col2:
         if level == "Protein":
@@ -485,23 +485,23 @@ def cov_plot_ui():
                     outliers=st.session_state.get("outliers7", False),
                     header=st.session_state.get("header7", True),
                     legend=st.session_state.get("legend7", True),
-                    width_cm=st.session_state.get("width7", 20),
-                    height_cm=st.session_state.get("height7", 10),
-                    dpi=st.session_state.get("dpi7", 300),
+                    width_cm=st.session_state.get("plotWidth7", 20),
+                    height_cm=st.session_state.get("plotHeight7", 10),
+                    dpi=st.session_state.get("plotDPI7", 300),
                     plot_colors=st.session_state["selected_colors"]
                 )
                 st.pyplot(fig)
 
                 import io
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"cov_plot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"cov_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
@@ -525,28 +525,28 @@ def principal_component_analysis_ui():
             st.info("No data available for PCA plot.")
             return
 
-        show_legend = st.checkbox("Show Legend", value=True, key="legend8")
-        show_header = st.checkbox("Show Header", value=True, key="header8")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend8")
+        header = st.checkbox("Toggle Header", value=True, key="header8")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level8")
 
         st.markdown("---")
-        plot_type = st.selectbox("Plot Type:", ["Normal", "Interactive"], key="plot_type8")
+        type = st.selectbox("Type:", ["Normal", "Interactive"], key="type8")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="width8")
-        height = st.number_input("Height (cm):", value=10, key="height8")
-        dpi = st.number_input("DPI:", value=300, key="dpi8")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format8")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth8")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight8")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI8")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat8")
         download_placeholder = st.empty()
 
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="position8")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition8")
         st.text_area("Annotation Text:", key="text8")
-        st.button("Add", key="add8")
-        st.button("Delete", key="delete8")
+        st.button("Add", key="addText8")
+        st.button("Delete", key="deleteText8")
 
     with col2:
         if level == "Protein":
@@ -558,47 +558,46 @@ def principal_component_analysis_ui():
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                if plot_type == "Normal":
+                if type == "Normal":
                     fig = pca_plot(
                         data=data_to_use,
                         meta=meta_to_use,
-                        header=show_header,
-                        legend=show_legend,
-                        width_cm=width,
-                        height_cm=height,
-                        dpi=dpi,
+                        header=header,
+                        legend=legend,
+                        width_cm=plotWidth,
+                        height_cm=plotHeight,
+                        dpi=plotDPI,
                         plot_colors=st.session_state["selected_colors"]
                     )
                     st.pyplot(fig)
 
-                    import io
                     buf = io.BytesIO()
-                    fig.savefig(buf, format=file_format, dpi=dpi)
+                    fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                     buf.seek(0)
 
                     download_placeholder.download_button(
                         "Download Plot",
                         data=buf,
-                        file_name=f"pca_plot.{file_format}",
-                        mime=f"image/{file_format}"
+                        file_name=f"pca_plot.{plotFormat}",
+                        mime=f"image/{plotFormat}"
                     )
 
                     plt.close(fig)
 
-                elif plot_type == "Interactive":
+                elif type == "Interactive":
                     fig = pca_plot_interactive(
                         data=data_to_use,
                         meta=meta_to_use,
                         plot_colors=st.session_state["selected_colors"],
-                        header=show_header,
-                        legend=show_legend
+                        header=header,
+                        legend=legend
                     )
 
                     cm_to_px = 96 / 2.54
                     fig.update_layout(
-                        width=int(width * cm_to_px),
-                        height=int(height * cm_to_px),
-                        showlegend=show_legend
+                        width=int(plotWidth * cm_to_px),
+                        height=int(plotHeight * cm_to_px),
+                        showlegend=legend
                     )
 
                     st.plotly_chart(fig, use_container_width=False)
@@ -624,22 +623,22 @@ def abundance_plot_ui():
             st.info("No data available for abundance plot.")
             return
 
-        show_legend = st.checkbox("Show Legend", value=True, key="legend9")
-        show_header = st.checkbox("Show Header", value=True, key="header9")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend9")
+        header = st.checkbox("Toggle Header", value=True, key="header9")
 
         st.markdown("---")
         level = st.selectbox("Level:", available_levels, key="level9")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", value=20, key="width9")
-        height = st.number_input("Height (cm):", value=10, key="height9")
-        dpi = st.number_input("DPI:", value=300, key="dpi9")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format9")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth9")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight9")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI9")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat9")
         download_placeholder = st.empty()
 
         st.markdown("---")
-        st.selectbox("Position:", ["Above", "Below"], key="position9")
+        st.selectbox("Position:", ["Above", "Below"], key="textPosition9")
         st.text_area("Enter Text:", key="text9", height=150)
         st.button("Add", key="addText9")
         st.button("Delete", key="deleteText9")
@@ -667,25 +666,24 @@ def abundance_plot_ui():
                         data=data_to_use,
                         meta=meta_to_use,
                         workflow=level,
-                        width_cm=width,
-                        height_cm=height,
-                        dpi=dpi,
-                        legend=show_legend,
-                        header=show_header,
+                        width_cm=plotWidth,
+                        height_cm=plotHeight,
+                        dpi=plotDPI,
+                        legend=legend,
+                        header=header,
                         plot_colors=st.session_state["selected_colors"]
                     )
                     st.pyplot(fig)
 
-                    import io
                     buf = io.BytesIO()
-                    fig.savefig(buf, format=file_format, dpi=dpi)
+                    fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                     buf.seek(0)
 
                     download_placeholder.download_button(
                         "Download Plot",
                         data=buf,
-                        file_name=f"abundance_plot.{file_format}",
-                        mime=f"image/{file_format}"
+                        file_name=f"abundance_plot.{plotFormat}",
+                        mime=f"image/{plotFormat}"
                     )
                     plt.close(fig)
                 else:
@@ -718,10 +716,10 @@ def correlation_plot_ui():
             return
 
 
-        toggle_id = st.checkbox(
+        id = st.checkbox(
             "Toggle ID",
-            value=st.session_state.get("toggle_id12", True),
-            key="toggleId12"
+            value=st.session_state.get("id12", True),
+            key="id12"
         )
 
         st.markdown("---")
@@ -735,10 +733,10 @@ def correlation_plot_ui():
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
-        width = st.number_input("Width (cm):", min_value=4, max_value=20, value=10, key="width12")
-        height = st.number_input("Height (cm):", min_value=4, max_value=20, value=8, key="height12")
-        dpi = st.number_input("DPI:", min_value=50, max_value=300, value=100, key="dpi12")
-        file_format = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="format12")
+        plotWidth = st.number_input("Width (cm):", min_value=4, max_value=20, value=10, key="plotWidth12")
+        plotHeight = st.number_input("Height (cm):", min_value=4, max_value=20, value=8, key="plotHeight12")
+        plotDPI = st.number_input("DPI:", min_value=50, max_value=300, value=100, key="plotDPI12")
+        plotFormat = st.selectbox("File Format:", ["png", "jpg", "svg", "pdf"], key="plotFormat12")
         download_placeholder = st.empty()
 
         st.markdown("---")
@@ -763,24 +761,23 @@ def correlation_plot_ui():
                     data=data_to_use,
                     meta=meta_to_use,
                     method=method,
-                    id=toggle_id,
+                    id=id,
                     full_range=False,
-                    width=width,
-                    height=height,
-                    dpi=dpi
+                    width=plotWidth,
+                    height=plotHeight,
+                    dpi=plotDPI
                 )
                 st.pyplot(fig)
 
-                import io
                 buf = io.BytesIO()
-                fig.savefig(buf, format=file_format, dpi=dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"correlation_plot.{file_format}",
-                    mime=f"image/{file_format}"
+                    file_name=f"correlation_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
