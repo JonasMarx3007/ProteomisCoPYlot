@@ -23,15 +23,15 @@ def phossite_plot_ui():
         cutoff = st.number_input("Cutoff:", value=0, key="cutoff19")
         st.markdown("---")
 
-        plot_width = st.number_input("Width (cm):", value=15, key="plotWidth19")
-        plot_height = st.number_input("Height (cm):", value=10, key="plotHeight19")
-        plot_dpi = st.number_input("DPI:", value=100, key="plotDPI19")
-        plot_format = st.selectbox("Format:", ["png", "jpg", "svg", "pdf"], index=0)
+        plotWidth = st.number_input("Width (cm):", value=15, key="plotWidth19")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight19")
+        plotDPI = st.number_input("DPI:", value=100, key="plotDPI19")
+        plotFormat = st.selectbox("Format:", ["png", "jpg", "svg", "pdf"], index=0, key="plotFormat19")
 
         download_placeholder = st.empty()
 
         st.markdown("---")
-        text_input = st.text_area("Enter text:", value="", key="text19", height=100)
+        text = st.text_area("Enter text:", value="", key="text19", height=100)
         st.button("Add", key="addText19")
         st.button("Delete", key="deleteText19")
 
@@ -42,21 +42,21 @@ def phossite_plot_ui():
                 fig = simple_phos_site_plot(
                     data,
                     filter_value=cutoff,
-                    width_cm=plot_width,
-                    height_cm=plot_height,
-                    dpi=plot_dpi
+                    width_cm=plotWidth,
+                    height_cm=plotHeight,
+                    dpi=plotDPI
                 )
                 st.pyplot(fig)
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=plot_format, dpi=plot_dpi, bbox_inches="tight")
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI, bbox_inches="tight")
                 buf.seek(0)
 
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"phossite_plot.{plot_format}",
-                    mime=f"image/{plot_format}"
+                    file_name=f"phossite_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
@@ -70,23 +70,23 @@ def phossite_coverage_plot_ui():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        toggle_id = st.checkbox("Show IDs", value=False, key="toggle_id21")
-        toggle_header = st.checkbox("Show Header", value=True, key="toggle_header21")
-        toggle_legend = st.checkbox("Show Legend", value=True, key="toggle_legend21")
+        id = st.checkbox("Toggle ID", value=False, key="id21")
+        header = st.checkbox("Toggle Header", value=True, key="header21")
+        legend = st.checkbox("Toggle Legend", value=True, key="legend21")
         st.markdown("---")
 
-        plot_type = st.selectbox("Type:", options=["Normal", "Summary"], key="type21")
+        type = st.selectbox("Type:", options=["Normal", "Summary"], key="type21")
         st.markdown("---")
 
-        plot_width = st.number_input("Width (cm):", value=20, key="plotWidth21")
-        plot_height = st.number_input("Height (cm):", value=10, key="plotHeight21")
-        plot_dpi = st.number_input("DPI:", value=300, key="plotDPI21")
-        plot_format = st.selectbox("File Format:", options=["png", "jpg", "svg", "pdf"], key="plotFormat21")
+        plotWidth = st.number_input("Width (cm):", value=20, key="plotWidth21")
+        plotHeight = st.number_input("Height (cm):", value=10, key="plotHeight21")
+        plotDPI = st.number_input("DPI:", value=300, key="plotDPI21")
+        plotFormat = st.selectbox("File Format:", options=["png", "jpg", "svg", "pdf"], key="plotFormat21")
         download_placeholder = st.empty()
         st.markdown("---")
 
-        text_position = st.selectbox("Position:", options=["Above", "Below"], key="textPosition21")
-        text_input = st.text_area("Enter text:", value="", key="text21", height=100)
+        textPosition = st.selectbox("Position:", options=["Above", "Below"], key="textPosition21")
+        text = st.text_area("Enter text:", value="", key="text21", height=100)
         st.button("Add", key="addText21")
         st.button("Delete", key="deleteText21")
 
@@ -96,38 +96,38 @@ def phossite_coverage_plot_ui():
             meta = st.session_state["meta2"]
 
             try:
-                if plot_type == "Normal":
+                if type == "Normal":
                     fig = phossite_coverage_plot(
                         data,
                         meta,
-                        id=toggle_id,
-                        header=toggle_header,
-                        legend=toggle_legend,
-                        width=plot_width,
-                        height=plot_height,
-                        dpi=plot_dpi
+                        id=id,
+                        header=header,
+                        legend=legend,
+                        width=plotWidth,
+                        height=plotHeight,
+                        dpi=plotDPI
                     )
-                elif plot_type == "Summary":
+                elif type == "Summary":
                     fig = phossite_coverage_plot_summary(
                         data,
                         meta,
-                        header=toggle_header,
-                        legend=toggle_legend,
-                        width=plot_width,
-                        height=plot_height,
-                        dpi=plot_dpi
+                        header=header,
+                        legend=legend,
+                        width=plotWidth,
+                        height=plotHeight,
+                        dpi=plotDPI
                     )
 
                 st.pyplot(fig)
 
                 buf = io.BytesIO()
-                fig.savefig(buf, format=plot_format, dpi=plot_dpi)
+                fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
                 download_placeholder.download_button(
                     "Download Plot",
                     data=buf,
-                    file_name=f"phossite_plot.{plot_format}",
-                    mime=f"image/{plot_format}"
+                    file_name=f"phossite_plot.{plotFormat}",
+                    mime=f"image/{plotFormat}"
                 )
 
                 plt.close(fig)
