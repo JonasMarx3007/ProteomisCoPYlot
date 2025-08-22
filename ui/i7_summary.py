@@ -84,9 +84,16 @@ def log_ui():
     )
 
 def report_ui():
-    st.header("Report UI")
+    st.header("Report Generator")
+
+    title_input = st.text_input("Report Title:", key="report_title")
+    author_input = st.text_input("Author:", key="report_author")
 
     if st.button("Generate HTML Report"):
-        report_file = report_function()
-        st.success(f"Report generated: {report_file}")
-        st.markdown(f"[Download Report]({report_file})")
+        html_content = report_function()
+        st.download_button(
+            label="Download HTML Report",
+            data=html_content,
+            file_name="CoPYlot_report.html",
+            mime="text/html"
+        )
