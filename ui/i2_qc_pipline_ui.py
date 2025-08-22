@@ -1,7 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 import io
-from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary, interactive_abundance_plot, pca_plot_interactive
+from utils.functions import coverage_plot, missing_value_plot, histo_int, boxplot_int, cov_plot, pca_plot, abundance_plot, corr_plot, coverage_plot_pep, missing_value_plot_prec, missing_value_plot_pep, coverage_plot_summary, interactive_abundance_plot, pca_plot_interactive, boxplot_int_single
 
 #MAIN
 def qc_pipeline_ui():
@@ -354,10 +354,12 @@ def boxplot_intensity_ui():
             return
 
         show_outliers = st.checkbox("Show Outliers", value=False, key="outliers6")
-        show_header = st.checkbox("Show Header", value=True, key="header6")
-        show_legend = st.checkbox("Show Legend", value=True, key="legend6")
+        show_header = st.checkbox("Show Header", value=True, key="toggle_header6")
+        show_id = st.checkbox("Show ID", value=True, key="show_id6")
+        show_legend = st.checkbox("Show Legend", value=True, key="toggle_legend6")
 
         st.markdown("---")
+        mode = st.selectbox("Plot Type:", ["Mean", "Single"], key="mode6")
         level = st.selectbox("Level:", available_levels, key="level6")
 
         st.markdown("---")
@@ -381,20 +383,36 @@ def boxplot_intensity_ui():
         elif level == "Phosphosite":
             data_to_use = st.session_state.get("log2_data3", None)
             meta_to_use = st.session_state.get("meta2", None)
+        else:
+            data_to_use, meta_to_use = None, None
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                fig = boxplot_int(
-                    data=data_to_use,
-                    meta=meta_to_use,
-                    outliers=st.session_state.get("outliers6", False),
-                    header=st.session_state.get("header6", True),
-                    legend=st.session_state.get("legend6", True),
-                    width_cm=st.session_state.get("width6", 20),
-                    height_cm=st.session_state.get("height6", 10),
-                    dpi=st.session_state.get("dpi6", 300),
-                    plot_colors=st.session_state["selected_colors"]
-                )
+                if mode == "Mean":
+                    fig = boxplot_int(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        outliers=st.session_state.get("outliers6", False),
+                        header=st.session_state.get("toggle_header6", True),
+                        width_cm=st.session_state.get("width6", 20),
+                        height_cm=st.session_state.get("height6", 10),
+                        dpi=st.session_state.get("dpi6", 300),
+                        plot_colors=st.session_state["selected_colors"]
+                    )
+                else:
+                    fig = boxplot_int_single(
+                        data=data_to_use,
+                        meta=meta_to_use,
+                        outliers=st.session_state.get("outliers6", False),
+                        id=st.session_state.get("show_id6", True),
+                        header=st.session_state.get("toggle_header6", True),
+                        legend=st.session_state.get("toggle_legend6", True),
+                        width_cm=st.session_state.get("width6", 20),
+                        height_cm=st.session_state.get("height6", 10),
+                        dpi=st.session_state.get("dpi6", 300),
+                        plot_colors=st.session_state["selected_colors"]
+                    )
+
                 st.pyplot(fig)
 
                 import io

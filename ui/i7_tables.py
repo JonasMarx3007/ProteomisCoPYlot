@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import csv
-from utils.functions import bool_to_str
+from utils.functions import bool_to_str, number_to_str
 
 #MAIN
 def tables_ui():
@@ -35,10 +35,31 @@ def log_ui():
     st.header("System Variables Log")
 
     toggle_id3 = bool_to_str(st.session_state.get("toggle_id3", None))
+    toggle_header3 = bool_to_str(st.session_state.get("toggle_header3", None))
+    toggle_legend3 = bool_to_str(st.session_state.get("toggle_legend3", None))
+    toggle_header4 = bool_to_str(st.session_state.get("toggle_header4", None))
+    bin_val4 = number_to_str(st.session_state.get("missValBin4", None))
+    toggle_text4 = bool_to_str(st.session_state.get("toggle_text4", None))
+    text_size4 = number_to_str(st.session_state.get("text_size4", None))
+    toggle_header5 = bool_to_str(st.session_state.get("toggle_header5", None))
+    toggle_legend5 = bool_to_str(st.session_state.get("toggle_legend5", None))
+    toggle_legend6 = bool_to_str(st.session_state.get("legend6", None))
+    toggle_header6 = bool_to_str(st.session_state.get("header6", None))
 
     log_df = pd.DataFrame({
-        "Var": ["CoveragePlotID"],
-        "Select": [toggle_id3]
+        "Var": ["CoveragePlotID", "CoveragePlotHeader", "CoveragePlotLegend",
+                "MissingValuePlotHeader", "MissingValuePlotBin", "MissingValueText", "MissingValueTextSize",
+                "HistogramIntHeader", "HistogramIntLegend",
+                "BoxplotIntLegend", "BoxplotIntID", "BoxplotIntOut","BoxplotIntMean", "BoxplotIntHeader", "BoxplotIntHeader",
+                "CovPlotOut", "CovPlotHeader", "CovPlotLegend",
+                "PCAHeader", "PCALegend", "CorrPlotDisplay", "CorrPlotID",
+                "RTPlotStyle", "RTLine", "HexbinsRT", "RTHeader",
+                "ModPlotID", "ModPlotHeader",
+                "MissedCleavID", "MissedCleavText", "MissedCleavTextSize", "MissedCleavHeader"],
+        "Select": [toggle_id3, toggle_header3, toggle_legend3,
+                   toggle_header4, bin_val4, toggle_text4, text_size4,
+                   toggle_header5, toggle_legend5,
+                   toggle_legend6, ]
     })
 
     st.dataframe(log_df.style.hide(axis="index"), use_container_width=True)

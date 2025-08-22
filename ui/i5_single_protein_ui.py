@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.functions import compare_prot_line, boxplot_int_single
+from utils.functions import compare_prot_line, boxplot_int_single_prot
 import io
 
 #MAIN
@@ -150,7 +150,7 @@ def protein_box_ui():
                 selected_samples = meta_filtered["sample"].tolist()
                 data_filtered = data_filtered[selected_samples]
 
-                fig = boxplot_int_single(
+                fig = boxplot_int_single_prot(
                     data_filtered,
                     meta_filtered,
                     protein=selected_protein,

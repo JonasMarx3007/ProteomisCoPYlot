@@ -31,6 +31,13 @@ def bool_to_str(value):
         return ""
 
 
+def number_to_str(value):
+    if isinstance(value, (int, float)):
+        return str(value)
+    else:
+        return ""
+
+
 def make_columns_unique(df):
     cols = pd.Series(df.columns)
     for dup in cols[cols.duplicated()].unique():
@@ -784,7 +791,7 @@ def histo_int(data, meta, plot_colors=None, header=True, legend=True, ax=None):
 
 
 @st.cache_data
-def boxplot_int(data, meta, outliers=False, header=True, legend=True, plot_colors=None,
+def boxplot_int(data, meta, outliers=False, header=True, plot_colors=None,
                 width_cm=20, height_cm=10, dpi=100):
     n_conditions = meta['condition'].nunique()
 
@@ -839,16 +846,88 @@ def boxplot_int(data, meta, outliers=False, header=True, legend=True, plot_color
     if header:
         ax.set_title("Measured protein intensity values (log2)")
 
+    if ax.get_legend() is not None:
+        ax.get_legend().remove()
+
+    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    return fig
+
+
+@st.cache_data
+def boxplot_int_single(
+    data, meta, outliers=False, id=True, header=True, legend=True, plot_colors=None,
+    width_cm=20, height_cm=10, dpi=100
+):
+    meta = meta.copy()
+    meta["id"] = meta["sample"].apply(extract_id_or_number)
+
+    if id:
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta.apply(
+            lambda row: f"{row['condition']}_{row['new_sample']} ({row['id']})", axis=1
+        )
+    else:
+        meta["new_sample"] = meta.groupby("condition").cumcount() + 1
+        meta["new_sample"] = meta.apply(
+            lambda row: f"{row['condition']}_{row['new_sample']}", axis=1
+        )
+
+    rename_dict = dict(zip(meta["sample"], meta["new_sample"]))
+    data = data.rename(columns=rename_dict)
+
+    intensities = data.melt(var_name="sample", value_name="intensity")
+    intensities = intensities.merge(
+        meta[["new_sample", "condition"]],
+        left_on="sample", right_on="new_sample"
+    )
+    intensities = intensities.replace([np.inf, -np.inf], np.nan).dropna()
+
+    samples = meta["new_sample"].tolist()
+
+    grouped_data = [
+        intensities.loc[intensities["sample"] == s, "intensity"].values
+        for s in samples
+    ]
+
+    unique_conditions = meta["condition"].unique()
+    if plot_colors is None:
+        cmap = plt.cm.get_cmap("tab10", len(unique_conditions))
+        condition_colors = dict(zip(unique_conditions, [cmap(i) for i in range(len(unique_conditions))]))
+    else:
+        condition_colors = dict(zip(unique_conditions, plot_colors))
+
+    sample_colors = [condition_colors[c] for c in meta["condition"]]
+
+    fig, ax = plt.subplots(figsize=(width_cm / 2.54, height_cm / 2.54), dpi=dpi)
+    bp = ax.boxplot(grouped_data, patch_artist=True, showfliers=outliers)
+
+    for patch, color in zip(bp["boxes"], sample_colors):
+        patch.set_facecolor(color)
+
+    ax.set_xticks(range(1, len(samples) + 1))
+    ax.set_xticklabels(samples, rotation=90, ha="center")
+    ax.set_ylabel("log2 Intensity")
+
+    if header:
+        ax.set_title("Measured protein intensity values (log2)")
+    else:
+        ax.set_title("")
+
     if legend:
         from matplotlib.patches import Patch
-        legend_handles = [Patch(facecolor=plot_colors[i], edgecolor='black', label=cond) for i, cond in enumerate(conditions_order)]
+        legend_handles = [
+            Patch(facecolor=condition_colors[c], edgecolor="black", label=c)
+            for c in unique_conditions
+        ]
         ax.legend(handles=legend_handles, title="Condition",
-                  loc='center left', bbox_to_anchor=(1, 0.5))
+                  loc="center left", bbox_to_anchor=(1, 0.5))
+        plt.subplots_adjust(right=0.8)
     else:
         if ax.get_legend() is not None:
             ax.get_legend().remove()
+        plt.subplots_adjust(right=0.95)
 
-    plt.tight_layout(rect=[0, 0, 0.85, 1])
+    plt.tight_layout()
     return fig
 
 
@@ -1811,11 +1890,8 @@ def compare_prot_line(data, meta, conditions, inputs, id=True, header=True, lege
 
 
 @st.cache_data
-def boxplot_int_single(data, meta, protein, outliers=False, header=True, legend=True,
+def boxplot_int_single_prot(data, meta, protein, outliers=False, header=True, legend=True,
                        plot_colors=None, width=8, height=6, dpi=100):
-    import matplotlib.pyplot as plt
-    import pandas as pd
-
     meta = meta.copy()
     data = data.copy()
     data = data[data.index == protein]
