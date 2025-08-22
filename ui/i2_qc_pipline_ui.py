@@ -172,7 +172,7 @@ def missing_value_plot_ui():
             st.info("No data available for plotting.")
             return
 
-        bin_val = st.number_input("Bin missing values (optional):", value=0, min_value=0, key="missValBin4")
+        bins = st.number_input("Bin missing values (optional):", value=0, min_value=0, key="bins4")
         st.markdown("---")
         plotText = st.checkbox("Toggle Text", value=True, key="plotText4")
         text_size = st.number_input("Text Size:", value=8, key="text_size4")
@@ -205,7 +205,7 @@ def missing_value_plot_ui():
                 fig = plot_func(
                     data=data_to_use,
                     meta=meta_to_use,
-                    bin=bin_val,
+                    bin=bins,
                     header=header,
                     text=plotText,
                     text_size=text_size,
@@ -256,7 +256,7 @@ def missing_value_plot_ui():
                 fig = plot_func(
                     data=data_to_use,
                     meta=meta_to_use,
-                    bin=bin_val,
+                    bin=bins,
                     header=header,
                     text=plotText,
                     text_size=text_size,
@@ -319,7 +319,6 @@ def histogram_intensity_ui():
                 histo_int(data_to_use, meta_to_use, header=header, legend=legend, ax=ax, plot_colors=st.session_state["selected_colors"])
                 st.pyplot(fig)
 
-                import io
                 buf = io.BytesIO()
                 fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
@@ -415,7 +414,6 @@ def boxplot_intensity_ui():
 
                 st.pyplot(fig)
 
-                import io
                 buf = io.BytesIO()
                 fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
@@ -492,7 +490,6 @@ def cov_plot_ui():
                 )
                 st.pyplot(fig)
 
-                import io
                 buf = io.BytesIO()
                 fig.savefig(buf, format=plotFormat, dpi=plotDPI)
                 buf.seek(0)
