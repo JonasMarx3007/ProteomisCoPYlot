@@ -130,8 +130,8 @@ def report_function():
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
-        html_parts.append(f"<h2>1.4 Mod Plot</h2>")
-        html_parts.append("<p>This plot something Mods.</p>")
+        html_parts.append(f"<h2>1.5 Missed CL Plot</h2>")
+        html_parts.append("<p>This plot something Misses.</p>")
         html_parts.append(f"<img src='data:image/png;base64,{img_base64}' style='width:100%;height:auto;'>")
 
     #Prot - Coverage
