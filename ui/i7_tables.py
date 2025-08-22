@@ -44,7 +44,7 @@ def log_ui():
     log_dict = {"Var": [], "Select": []}
     exclude_substrings = ["level", "plotFormat", "plotDPI", "data", "meta", "paired", "pval", "cond", "fc", "download",
                           "Impute", "collapse", "n1", "corrected", "add", "delete", "Width", "Height", "DPI", "filter",
-                          "log2", "term", "10.5", "11", "feature"]
+                          "log2", "term", "10.5", "11", "feature", "textPositions"]
     for key in st.session_state:
         if not any(sub in key for sub in exclude_substrings):
             log_dict["Var"].append(key)
