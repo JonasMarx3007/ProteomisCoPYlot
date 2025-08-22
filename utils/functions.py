@@ -1333,11 +1333,6 @@ def volcano_plot(volcano_df, condition1, condition2, in_pval=0.05, in_log2fc=1, 
 @st.cache_data
 def volcano_data_f(data, meta, condition1, condition2, in_pval=0.05, in_log2fc=1,
                    workflow="Protein", paired="Unpaired", uncorrected=False):
-    import numpy as np
-    import pandas as pd
-    from scipy.stats import t
-    from statsmodels.stats.multitest import multipletests
-
     label_col = "ProteinNames" if workflow == "Protein" else "PTM_Collapse_key"
     annotated_columns1 = meta.loc[meta['condition'] == condition1, 'sample'].tolist()
     annotated_columns2 = meta.loc[meta['condition'] == condition2, 'sample'].tolist()
