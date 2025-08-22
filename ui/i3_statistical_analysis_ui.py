@@ -32,9 +32,20 @@ def volcano_plot_ui():
         test_type = st.selectbox("Test Type:", options=["Unpaired", "Paired"], key="paired10")
 
         available_levels = []
-        if any(k in st.session_state for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"]) and "meta" in st.session_state:
+        if (
+                any(k in st.session_state and st.session_state[k] is not None
+                    for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"])
+                and "meta" in st.session_state
+                and st.session_state["meta"] is not None
+        ):
             available_levels.append("Protein")
-        if any(k in st.session_state for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]) and "meta2" in st.session_state:
+
+        if (
+                any(k in st.session_state and st.session_state[k] is not None
+                    for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"])
+                and "meta2" in st.session_state
+                and st.session_state["meta2"] is not None
+        ):
             available_levels.append("Phosphosite")
 
         if not available_levels:
@@ -53,7 +64,10 @@ def volcano_plot_ui():
             meta_key = "meta2"
             data_keys = ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]
 
-        data_key = next((k for k in data_keys if k in st.session_state), None)
+        data_key = next(
+            (k for k in data_keys if k in st.session_state and st.session_state[k] is not None),
+            None
+        )
 
         if not data_key:
             st.warning("No data available for the selected level.")
@@ -72,6 +86,7 @@ def volcano_plot_ui():
         if condition1 and condition2 and condition1 != condition2:
             volcano_df = volcano_data_f(
                 st.session_state[data_key],
+                #st.session_state.get("log2_data"),
                 meta_df,
                 condition1=condition1,
                 condition2=condition2,
@@ -186,9 +201,20 @@ def simulation_ui():
         st.markdown("---")
 
         available_levels = []
-        if any(k in st.session_state for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"]) and "meta" in st.session_state:
+        if (
+                any(k in st.session_state and st.session_state[k] is not None
+                    for k in ["imputed_log2_data", "filtered_log2_data", "log2_data"])
+                and "meta" in st.session_state
+                and st.session_state["meta"] is not None
+        ):
             available_levels.append("Protein")
-        if any(k in st.session_state for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]) and "meta2" in st.session_state:
+
+        if (
+                any(k in st.session_state and st.session_state[k] is not None
+                    for k in ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"])
+                and "meta2" in st.session_state
+                and st.session_state["meta2"] is not None
+        ):
             available_levels.append("Phosphosite")
 
         if not available_levels:
@@ -211,7 +237,11 @@ def simulation_ui():
             meta_key = "meta2"
             data_keys = ["imputed_log2_data3", "filtered_log2_data3", "log2_data3"]
 
-        data_key = next((k for k in data_keys if k in st.session_state), None)
+        data_key = next(
+            (k for k in data_keys if k in st.session_state and st.session_state[k] is not None),
+            None
+        )
+
         if not data_key:
             st.warning("No data available for the selected level.")
             return
