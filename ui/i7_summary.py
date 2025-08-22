@@ -5,7 +5,7 @@ import csv
 from utils.functions import bool_to_str, number_to_str
 
 #MAIN
-def tables_ui():
+def summary_ui():
     tables_tabs = st.tabs([
         "Meta",
         "Log",
@@ -15,6 +15,7 @@ def tables_ui():
         meta_ui()
     with tables_tabs[1]:
         log_ui()
+
 
 #SUB
 def meta_ui():

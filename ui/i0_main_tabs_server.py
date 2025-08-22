@@ -4,12 +4,12 @@ from ui.i3_statistical_analysis_ui import *
 from ui.i4_peptide_ui import *
 from ui.i5_single_protein_ui import *
 from ui.i6_phospho_specific_ui import *
-from ui.i7_tables import *
+from ui.i7_summary import *
 
 def render_main_tabs():
     main_tabs = st.tabs(
         ["Data", "QC Pipeline", "Statistical Analysis", "Peptide Level", "Single Protein", "Phospho-specific",
-         "Tables"])
+         "Summary"])
 
     with main_tabs[0]:
         data_ui()
@@ -30,4 +30,4 @@ def render_main_tabs():
         phospho_specific_ui()
 
     with main_tabs[6]:
-        tables_ui()
+        summary_ui()
