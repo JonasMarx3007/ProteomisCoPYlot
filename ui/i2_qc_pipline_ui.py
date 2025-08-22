@@ -123,9 +123,7 @@ def coverage_plot_ui():
                     fig = coverage_plot_summary(
                         data=data_to_use,
                         meta=meta_to_use,
-                        id=id,
                         header=header,
-                        legend=legend,
                         plot_colors=st.session_state["selected_colors"],
                         width=plotWidth,
                         height=plotHeight,

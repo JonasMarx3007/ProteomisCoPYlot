@@ -414,24 +414,17 @@ def coverage_plot(data, meta, id=True, header=True, legend=True, plot_colors=Non
 
 
 @st.cache_data
-def coverage_plot_summary(data, meta, id=True, header=True, legend=True, plot_colors=None, width=20, height=10, dpi=300):
+def coverage_plot_summary(data, meta, header=True, plot_colors=None, width=20, height=10, dpi=300):
     data = data.replace(0, np.nan)
     meta = meta.copy()
     meta["sample"] = meta["sample"].astype(str)
     meta["id"] = meta["sample"].str.extract(r'(\d+|[A-Za-z]+)', expand=False)
 
-    if id:
-        meta["new_sample"] = [
-            f"{cond}_{i+1}\n({sid})"
-            for cond in meta["condition"].unique()
-            for i, sid in enumerate(meta.loc[meta["condition"] == cond, "id"])
-        ]
-    else:
-        meta["new_sample"] = [
-            f"{cond}_{i+1}"
-            for cond in meta["condition"].unique()
-            for i in range(len(meta.loc[meta["condition"] == cond]))
-        ]
+    meta["new_sample"] = [
+        f"{cond}_{i+1}\n({sid})"
+        for cond in meta["condition"].unique()
+        for i, sid in enumerate(meta.loc[meta["condition"] == cond, "id"])
+    ]
 
     rename_dict = dict(zip(meta["sample"], meta["new_sample"]))
     data = data.rename(columns=rename_dict)
@@ -504,10 +497,7 @@ def coverage_plot_summary(data, meta, id=True, header=True, legend=True, plot_co
     ax.set_title(plot_title)
     ax.set_ylabel(y_label)
     ax.set_xticks(bar_positions)
-    ax.set_xticklabels(conditions, rotation=45, ha="right")
-
-    if not legend:
-        ax.get_legend().remove()
+    ax.set_xticklabels(conditions, rotation=90, ha="center")
 
     ymax = max(
         max(bar_means + np.nan_to_num(bar_sds, nan=0)),
