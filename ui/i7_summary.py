@@ -3,19 +3,22 @@ import pandas as pd
 import io
 import csv
 from utils.functions import bool_to_str, number_to_str
+from utils.report_function import report_function
 
 #MAIN
 def summary_ui():
-    tables_tabs = st.tabs([
-        "Meta",
+    summary_tabs = st.tabs([
+        "Tables",
         "Log",
+        "Report"
     ])
 
-    with tables_tabs[0]:
+    with summary_tabs[0]:
         meta_ui()
-    with tables_tabs[1]:
+    with summary_tabs[1]:
         log_ui()
-
+    with summary_tabs[2]:
+        report_ui()
 
 #SUB
 def meta_ui():
@@ -79,3 +82,11 @@ def log_ui():
         mime="text/csv",
         key="download_log_csv"
     )
+
+def report_ui():
+    st.header("Report UI")
+
+    if st.button("Generate HTML Report"):
+        report_file = report_function()
+        st.success(f"Report generated: {report_file}")
+        st.markdown(f"[Download Report]({report_file})")
