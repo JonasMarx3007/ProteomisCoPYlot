@@ -140,14 +140,18 @@ def data_annotation_ui():
                 if "data" in st.session_state:
                     st.session_state["org_data"] = inverse_log2_transform_data(st.session_state["data"], st.session_state["meta"])
                     st.session_state["log2_data"] = st.session_state["data"]
+                    st.session_state["was_transformed"] = "yes"
                 else:
                     st.error("No data loaded yet.")
             if col_b.button("No", key="log2_no"):
                 if "data" in st.session_state:
                     st.session_state["org_data"] = st.session_state["data"]
                     st.session_state["log2_data"] = log2_transform_data(st.session_state["data"], st.session_state["meta"])
+                    st.session_state["was_transformed"] = "no"
                 else:
                     st.error("No data loaded yet.")
+            if "was_transformed" not in st.session_state:
+                st.session_state["was_transformed"] = None
 
             filter_num = st.number_input("Filter: At least", value=3, min_value=0, key="filter_num")
             filterop = st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop1")
@@ -157,8 +161,14 @@ def data_annotation_ui():
                     st.session_state["filtered_log2_data"] = filter_data(st.session_state["log2_data"], st.session_state["meta"], filter_num, filterop)
                     after_count = st.session_state["filtered_log2_data"].shape[0]
                     st.success(f"Filtered Normal Data: {before_count} → {after_count} proteins")
+                    st.session_state["applied_filternum"] = filter_num
+                    st.session_state["applied_filtergroup"] = filterop
                 else:
                     st.error("No log2 data available for filtering.")
+            if "applied_filternum" not in st.session_state:
+                st.session_state["applied_filternum"] = None
+            if "applied_filtergroup" not in st.session_state:
+                st.session_state["applied_filtergroup"] = None
 
             st.subheader("Annotated Normal Data (Log2)")
             st.dataframe(st.session_state.get("filtered_log2_data", st.session_state.get("log2_data", pd.DataFrame())), key="displayed_data")
@@ -186,14 +196,18 @@ def data_annotation_ui():
                 if "data3" in st.session_state:
                     st.session_state["org_data3"] = inverse_log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
                     st.session_state["log2_data3"] = st.session_state["data3"]
+                    st.session_state["was_transformed2"] = "yes"
                 else:
                     st.error("No phospho data loaded yet.")
             if col_d.button("No", key="log2_no2"):
                 if "data3" in st.session_state:
                     st.session_state["org_data3"] = st.session_state["data3"]
                     st.session_state["log2_data3"] = log2_transform_data(st.session_state["data3"], st.session_state["meta2"])
+                    st.session_state["was_transformed2"] = "no"
                 else:
                     st.error("No phospho data loaded yet.")
+            if "was_transformed2" not in st.session_state:
+                st.session_state["was_transformed2"] = None
 
             filter_num2 = st.number_input("Filter: At least", value=3, min_value=1, key="filter_num2")
             filterop2 = st.selectbox("Value(s)", ["per group", "in at least one group"], key="filterop2")
@@ -203,8 +217,14 @@ def data_annotation_ui():
                     st.session_state["filtered_log2_data3"] = filter_data(st.session_state["log2_data3"], st.session_state["meta2"], filter_num2, filterop2)
                     after_count = st.session_state["filtered_log2_data3"].shape[0]
                     st.success(f"Filtered Phospho Data: {before_count} → {after_count} proteins")
+                    st.session_state["applied_filternum2"] = filter_num2
+                    st.session_state["applied_filtergroup2"] = filterop2
                 else:
                     st.error("No log2 phospho data available for filtering.")
+            if "applied_filternum2" not in st.session_state:
+                st.session_state["applied_filternum2"] = None
+            if "applied_filtergroup2" not in st.session_state:
+                st.session_state["applied_filtergroup2"] = None
 
             st.subheader("Annotated Phospho Data (Log2)")
             st.dataframe(st.session_state.get("filtered_log2_data3", st.session_state.get("log2_data3", pd.DataFrame())), key="displayed_data2")
@@ -220,7 +240,6 @@ def impute_data_ui():
         level = st.selectbox("Level:", ["Protein", "Phosphosite"], key="leveln1")
         st.markdown("---")
         impute_btn = st.button("Impute Data Values", key="ImputeEVE")
-        st.markdown("---")
         download_placeholder = st.empty()
     with col2:
         st.subheader("Imputation Plots")
@@ -234,6 +253,18 @@ def impute_data_ui():
         st.session_state.imputed_log2_data = None
     if "imputed_log2_data3" not in st.session_state:
         st.session_state.imputed_log2_data3 = None
+    if "applied_seed" not in st.session_state:
+        st.session_state.applied_seed = None
+    if "applied_qval" not in st.session_state:
+        st.session_state.applied_qval = None
+    if "applied_adjstd" not in st.session_state:
+        st.session_state.applied_adjstd = None
+    if "applied_seed2" not in st.session_state:
+        st.session_state.applied_seed2 = None
+    if "applied_qval2" not in st.session_state:
+        st.session_state.applied_qval2 = None
+    if "applied_adjstd2" not in st.session_state:
+        st.session_state.applied_adjstd2 = None
 
     if level == "Protein":
         base_data = st.session_state.get("filtered_log2_data", st.session_state.get("log2_data"))
@@ -254,9 +285,15 @@ def impute_data_ui():
     if impute_btn:
         if level == "Protein" and base_data is not None and meta is not None:
             st.session_state.imputed_log2_data = impute_values(base_data, meta, ret=0, q=q_val, adj_std=adj_std, seed=seed)
+            st.session_state.applied_seed = seed
+            st.session_state.applied_qval = q_val
+            st.session_state.applied_adjstd = adj_std
 
         elif level == "Phosphosite" and base_data is not None and meta is not None:
             st.session_state.imputed_log2_data3 = impute_values(base_data, meta, ret=0, q=q_val, adj_std=adj_std, seed=seed)
+            st.session_state.applied_seed2 = seed
+            st.session_state.applied_qval2 = q_val
+            st.session_state.applied_adjstd2 = adj_std
 
     if level == "Protein" and st.session_state.imputed_log2_data is not None:
         table_placeholder.dataframe(st.session_state.imputed_log2_data)

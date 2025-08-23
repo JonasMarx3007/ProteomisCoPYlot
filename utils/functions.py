@@ -32,6 +32,21 @@ def bool_to_str(value):
         return ""
 
 
+def format_value(val):
+    if hasattr(val, 'name'):
+        return val.name
+    elif isinstance(val, bool) or val is None:
+        return bool_to_str(val)
+    elif isinstance(val, (int, float)):
+        return number_to_str(val)
+    else:
+        return str(val)
+
+def extract_number(s):
+    nums = re.findall(r'\d+', s)
+    return int(nums[0]) if nums else -1
+
+
 def number_to_str(value):
     if isinstance(value, (int, float)):
         return str(value)
