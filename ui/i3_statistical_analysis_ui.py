@@ -86,7 +86,6 @@ def volcano_plot_ui():
         if condition1 and condition2 and condition1 != condition2:
             volcano_df = volcano_data_f(
                 st.session_state[data_key],
-                #st.session_state.get("log2_data"),
                 meta_df,
                 condition1=condition1,
                 condition2=condition2,
