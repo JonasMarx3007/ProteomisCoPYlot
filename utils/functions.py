@@ -1021,7 +1021,9 @@ def cov_plot(data, meta, outliers=False, header=True, legend=True, plot_colors=N
 
 
 @st.cache_data
-def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, height_cm=10, dpi=100, plot_colors=None):
+def pca_plot(data, meta, header=True, legend=True, dot_size=3,
+             width_cm=20, height_cm=10, dpi=100, plot_colors=None,
+             plot_3d=False, add_ellipses=False):
     meta['condition'] = pd.Categorical(meta['condition'], categories=meta['condition'].unique(), ordered=True)
     annotated_columns = meta['sample'].tolist()
     data_filtered = data[annotated_columns].dropna()
@@ -1030,17 +1032,23 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
     zero_variance_columns = transposed_expr.var(axis=0) == 0
     transposed_expr = transposed_expr.loc[:, ~zero_variance_columns]
 
-    pca = PCA(n_components=2)
+    n_components = 3 if plot_3d else 2
+    pca = PCA(n_components=n_components)
     pca_result = pca.fit_transform(transposed_expr)
     explained_variance = pca.explained_variance_ratio_ * 100
 
-    pca_scores = pd.DataFrame(pca_result, columns=['PC1', 'PC2'])
+    pcs = [f'PC{i+1}' for i in range(n_components)]
+    pca_scores = pd.DataFrame(pca_result, columns=pcs)
     pca_scores['sample'] = transposed_expr.index
     pca_scores = pca_scores.merge(meta, on='sample')
     pca_scores['condition'] = pd.Categorical(pca_scores['condition'], categories=meta['condition'].unique(), ordered=True)
 
     figsize = (width_cm / 2.54, height_cm / 2.54)
-    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+    if plot_3d:
+        fig = plt.figure(figsize=figsize, dpi=dpi)
+        ax = fig.add_subplot(111, projection='3d')
+    else:
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
 
     colors = plot_colors if plot_colors is not None else plt.cm.tab10.colors
     conditions = pca_scores['condition'].unique()
@@ -1048,13 +1056,36 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
 
     for cond in conditions:
         subset = pca_scores[pca_scores['condition'] == cond]
-        ax.scatter(subset['PC1'], subset['PC2'], label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
+        if plot_3d:
+            ax.scatter(subset['PC1'], subset['PC2'], subset['PC3'],
+                       label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
+        else:
+            ax.scatter(subset['PC1'], subset['PC2'],
+                       label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
 
-    ax.set_xlabel(f"Principal Component 1 - {explained_variance[0]:.2f}% variance")
-    ax.set_ylabel(f"Principal Component 2 - {explained_variance[1]:.2f}% variance")
+            if add_ellipses and len(subset) > 2:
+                cov = np.cov(subset[['PC1', 'PC2']].T)
+                vals, vecs = np.linalg.eigh(cov)
+                order = vals.argsort()[::-1]
+                vals, vecs = vals[order], vecs[:, order]
+                angle = np.degrees(np.arctan2(*vecs[:,0][::-1]))
+                width, height = 2 * np.sqrt(vals)
+                ellipse = Ellipse(xy=(subset['PC1'].mean(), subset['PC2'].mean()),
+                                  width=width, height=height,
+                                  angle=angle, edgecolor=color_map[cond],
+                                  facecolor='none', lw=2, alpha=0.7)
+                ax.add_patch(ellipse)
+
+    if plot_3d:
+        ax.set_xlabel(f"PC1 - {explained_variance[0]:.2f}%")
+        ax.set_ylabel(f"PC2 - {explained_variance[1]:.2f}%")
+        ax.set_zlabel(f"PC3 - {explained_variance[2]:.2f}%")
+    else:
+        ax.set_xlabel(f"PC1 - {explained_variance[0]:.2f}% variance")
+        ax.set_ylabel(f"PC2 - {explained_variance[1]:.2f}% variance")
 
     if header:
-        ax.set_title("PCA Plot")
+        ax.set_title("PCA Plot" if not plot_3d else "3D PCA Plot")
 
     if legend:
         ax.legend(title="Condition", bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -1067,7 +1098,9 @@ def pca_plot(data, meta, header=True, legend=True, dot_size=3, width_cm=20, heig
     return fig
 
 
-def pca_plot_interactive(data, meta, plot_colors=None, header=True, legend=True):
+@st.cache_data
+def pca_plot_interactive(data, meta, plot_colors=None, header=True, legend=True,
+                         dot_size=8, plot_3d=False, add_ellipses=False):
     annotated_columns = meta["sample"].tolist()
     data_filtered = data.loc[:, annotated_columns]
     data_filtered = data_filtered.dropna()
@@ -1077,36 +1110,89 @@ def pca_plot_interactive(data, meta, plot_colors=None, header=True, legend=True)
     transposed_expr = transposed_expr.loc[:, variances > 0]
 
     try:
-        pca = PCA(n_components=2)
+        n_components = 3 if plot_3d else 2
+        pca = PCA(n_components=n_components)
         pca_result = pca.fit_transform(transposed_expr)
         explained_variance = pca.explained_variance_ratio_ * 100
 
-        pca_scores = pd.DataFrame(pca_result, columns=["PC1", "PC2"])
+        pcs = [f"PC{i+1}" for i in range(n_components)]
+        pca_scores = pd.DataFrame(pca_result, columns=pcs)
         pca_scores["sample"] = transposed_expr.index
         pca_scores = pca_scores.merge(meta, on="sample")
 
-        x_label = f"Principal Component 1 - {explained_variance[0]:.2f}% variance"
-        y_label = f"Principal Component 2 - {explained_variance[1]:.2f}% variance"
+        if plot_3d:
+            fig = px.scatter_3d(
+                pca_scores,
+                x="PC1", y="PC2", z="PC3",
+                color="condition",
+                color_discrete_sequence=plot_colors,
+                hover_data={"sample": True, "condition": True},
+                opacity=0.8,
+                size_max=dot_size
+            )
 
-        fig = px.scatter(
-            pca_scores,
-            x="PC1",
-            y="PC2",
-            color="condition",
-            color_discrete_sequence=plot_colors,
-            hover_data={"sample": True, "condition": True},
-            opacity=0.8
-        )
+            fig.update_traces(marker=dict(size=dot_size))
 
-        fig.update_traces(marker=dict(size=8))
+            layout_kwargs = dict(
+                scene=dict(
+                    xaxis=dict(title=f"PC1 - {explained_variance[0]:.2f}%"),
+                    yaxis=dict(title=f"PC2 - {explained_variance[1]:.2f}%"),
+                    zaxis=dict(title=f"PC3 - {explained_variance[2]:.2f}%")
+                ),
+                showlegend=legend
+            )
+            if header:
+                layout_kwargs["title"] = "3D PCA Plot"
 
-        layout_kwargs = dict(
-            xaxis=dict(title=x_label, zeroline=False),
-            yaxis=dict(title=y_label, zeroline=False),
-            showlegend=legend
-        )
-        if header:
-            layout_kwargs["title"] = "PCA Plot"
+        else:
+            x_label = f"Principal Component 1 - {explained_variance[0]:.2f}% variance"
+            y_label = f"Principal Component 2 - {explained_variance[1]:.2f}% variance"
+
+            fig = px.scatter(
+                pca_scores,
+                x="PC1", y="PC2",
+                color="condition",
+                color_discrete_sequence=plot_colors,
+                hover_data={"sample": True, "condition": True},
+                opacity=0.8
+            )
+
+            fig.update_traces(marker=dict(size=dot_size))
+
+            layout_kwargs = dict(
+                xaxis=dict(title=x_label, zeroline=False),
+                yaxis=dict(title=y_label, zeroline=False),
+                showlegend=legend
+            )
+            if header:
+                layout_kwargs["title"] = "PCA Plot"
+
+            if add_ellipses:
+                import plotly.graph_objects as go
+                for cond in pca_scores["condition"].unique():
+                    subset = pca_scores[pca_scores["condition"] == cond]
+                    if len(subset) > 2:
+                        cov = np.cov(subset[["PC1", "PC2"]].T)
+                        vals, vecs = np.linalg.eigh(cov)
+                        order = vals.argsort()[::-1]
+                        vals, vecs = vals[order], vecs[:, order]
+                        theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+                        width, height = 2 * np.sqrt(vals)
+
+                        t = np.linspace(0, 2*np.pi, 100)
+                        ellipse = np.array([width/2*np.cos(t), height/2*np.sin(t)])
+                        R = np.array([[np.cos(np.radians(theta)), -np.sin(np.radians(theta))],
+                                      [np.sin(np.radians(theta)), np.cos(np.radians(theta))]])
+                        ellipse_rot = R @ ellipse
+                        ellipse_x = ellipse_rot[0] + subset["PC1"].mean()
+                        ellipse_y = ellipse_rot[1] + subset["PC2"].mean()
+
+                        fig.add_trace(go.Scatter(
+                            x=ellipse_x, y=ellipse_y,
+                            mode="lines", line=dict(color="black"),
+                            name=f"{cond} ellipse",
+                            showlegend=False
+                        ))
 
         fig.update_layout(**layout_kwargs)
         return fig

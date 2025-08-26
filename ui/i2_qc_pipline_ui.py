@@ -533,7 +533,10 @@ def principal_component_analysis_ui():
         level = st.selectbox("Level:", available_levels, key="level8")
 
         st.markdown("---")
-        type = st.selectbox("Type:", ["Normal", "Interactive"], key="type8")
+        plot_type = st.selectbox("Type:", ["Normal", "Interactive"], key="type8")
+        plot_dim = st.selectbox("Dimensions:", ["2D", "3D"], key="plotDim8")
+        add_ellipses = st.checkbox("Add Ellipses (2D only)", value=False, key="ellipses8")
+        dot_size = st.number_input("Dot Size:", value=5, min_value=1, max_value=50, key="dotSize8")
 
         st.markdown("---")
         st.header("Plot Size & Resolution")
@@ -559,7 +562,9 @@ def principal_component_analysis_ui():
 
         if data_to_use is not None and meta_to_use is not None:
             try:
-                if type == "Normal":
+                plot_3d = plot_dim == "3D"
+
+                if plot_type == "Normal":
                     fig = pca_plot(
                         data=data_to_use,
                         meta=meta_to_use,
@@ -568,7 +573,10 @@ def principal_component_analysis_ui():
                         width_cm=plotWidth,
                         height_cm=plotHeight,
                         dpi=plotDPI,
-                        plot_colors=st.session_state["selected_colors"]
+                        plot_colors=st.session_state["selected_colors"],
+                        dot_size=dot_size,
+                        plot_3d=plot_3d,
+                        add_ellipses=add_ellipses
                     )
                     st.pyplot(fig)
 
@@ -585,13 +593,16 @@ def principal_component_analysis_ui():
 
                     plt.close(fig)
 
-                elif type == "Interactive":
+                elif plot_type == "Interactive":
                     fig = pca_plot_interactive(
                         data=data_to_use,
                         meta=meta_to_use,
                         plot_colors=st.session_state["selected_colors"],
                         header=header,
-                        legend=legend
+                        legend=legend,
+                        dot_size=dot_size,
+                        plot_3d=plot_3d,
+                        add_ellipses=add_ellipses
                     )
 
                     cm_to_px = 96 / 2.54
