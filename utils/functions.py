@@ -1044,7 +1044,7 @@ def minimum_enclosing_ellipse(points, tol=1e-3):
 
 
 @st.cache_data
-def pca_plot(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3', header=True, legend=True, dot_size=3,
+def pca_plot(data, meta, header=True, legend=True, dot_size=3,
              width_cm=20, height_cm=10, dpi=100, plot_colors=None,
              plot_3d=False, add_ellipses=False):
     meta['condition'] = pd.Categorical(meta['condition'], categories=meta['condition'].unique(), ordered=True)
@@ -1074,25 +1074,25 @@ def pca_plot(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3', header=True, legend
     for cond in conditions:
         subset = pca_scores[pca_scores['condition'] == cond]
         if plot_3d:
-            ax.scatter(subset[pc_x], subset[pc_y], subset[pc_z],
+            ax.scatter(subset['PC1'], subset['PC2'], subset['PC3'],
                        label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
         else:
-            ax.scatter(subset[pc_x], subset[pc_y],
+            ax.scatter(subset['PC1'], subset['PC2'],
                        label=cond, s=dot_size*10, alpha=0.7, color=color_map[cond])
             if add_ellipses and len(subset) > 2:
-                points = subset[[pc_x, pc_y]].to_numpy()
+                points = subset[['PC1', 'PC2']].to_numpy()
                 center, axes, angle = minimum_enclosing_ellipse(points)
                 ellipse = Ellipse(xy=center, width=2*axes[0], height=2*axes[1],
                                   angle=angle, facecolor=color_map[cond], alpha=0.15,
                                   edgecolor=color_map[cond], lw=1)
                 ax.add_patch(ellipse)
     if plot_3d:
-        ax.set_xlabel(f"{pc_x} - {explained_variance[int(pc_x[2])-1]:.2f}%")
-        ax.set_ylabel(f"{pc_y} - {explained_variance[int(pc_y[2])-1]:.2f}%")
-        ax.set_zlabel(f"{pc_z} - {explained_variance[int(pc_z[2])-1]:.2f}%")
+        ax.set_xlabel(f"PC1 - {explained_variance[0]:.2f}%")
+        ax.set_ylabel(f"PC2 - {explained_variance[1]:.2f}%")
+        ax.set_zlabel(f"PC3 - {explained_variance[2]:.2f}%")
     else:
-        ax.set_xlabel(f"{pc_x} - {explained_variance[int(pc_x[2])-1]:.2f}% variance")
-        ax.set_ylabel(f"{pc_y} - {explained_variance[int(pc_y[2])-1]:.2f}% variance")
+        ax.set_xlabel(f"PC1 - {explained_variance[0]:.2f}% variance")
+        ax.set_ylabel(f"PC2 - {explained_variance[1]:.2f}% variance")
     if header:
         ax.set_title("PCA Plot" if not plot_3d else "3D PCA Plot")
     if legend:
@@ -1106,8 +1106,7 @@ def pca_plot(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3', header=True, legend
 
 
 @st.cache_data
-def pca_plot_interactive(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3',
-                         plot_colors=None, header=True, legend=True,
+def pca_plot_interactive(data, meta, plot_colors=None, header=True, legend=True,
                          dot_size=8, plot_3d=False, add_ellipses=False):
     import matplotlib.colors as mcolors
     import plotly.express as px
@@ -1128,26 +1127,26 @@ def pca_plot_interactive(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3',
     pca_scores = pca_scores.merge(meta, on="sample")
     if plot_3d:
         fig = px.scatter_3d(
-            pca_scores, x=pc_x, y=pc_y, z=pc_z,
+            pca_scores, x="PC1", y="PC2", z="PC3",
             color="condition", color_discrete_sequence=plot_colors,
             hover_data={"sample": True, "condition": True}, opacity=0.8
         )
         fig.update_traces(marker=dict(size=dot_size))
         layout_kwargs = dict(
             scene=dict(
-                xaxis=dict(title=f"{pc_x} - {explained_variance[int(pc_x[2])-1]:.2f}%"),
-                yaxis=dict(title=f"{pc_y} - {explained_variance[int(pc_y[2])-1]:.2f}%"),
-                zaxis=dict(title=f"{pc_z} - {explained_variance[int(pc_z[2])-1]:.2f}%")
+                xaxis=dict(title=f"PC1 - {explained_variance[0]:.2f}%"),
+                yaxis=dict(title=f"PC2 - {explained_variance[1]:.2f}%"),
+                zaxis=dict(title=f"PC3 - {explained_variance[2]:.2f}%")
             ),
             showlegend=legend
         )
         if header:
             layout_kwargs["title"] = "3D PCA Plot"
     else:
-        x_label = f"{pc_x} - {explained_variance[int(pc_x[2])-1]:.2f}% variance"
-        y_label = f"{pc_y} - {explained_variance[int(pc_y[2])-1]:.2f}% variance"
+        x_label = f"PC1 - {explained_variance[0]:.2f}% variance"
+        y_label = f"PC2 - {explained_variance[1]:.2f}% variance"
         fig = px.scatter(
-            pca_scores, x=pc_x, y=pc_y,
+            pca_scores, x="PC1", y="PC2",
             color="condition", color_discrete_sequence=plot_colors,
             hover_data={"sample": True, "condition": True}, opacity=0.8
         )
@@ -1163,7 +1162,7 @@ def pca_plot_interactive(data, meta, pc_x='PC1', pc_y='PC2', pc_z='PC3',
             for i, cond in enumerate(pca_scores["condition"].unique()):
                 subset = pca_scores[pca_scores["condition"] == cond]
                 if len(subset) > 2:
-                    points = subset[[pc_x, pc_y]].to_numpy()
+                    points = subset[["PC1","PC2"]].to_numpy()
                     center, axes, angle = minimum_enclosing_ellipse(points)
                     t = np.linspace(0, 2*np.pi, 200)
                     ellipse = np.array([axes[0]*np.cos(t), axes[1]*np.sin(t)])
