@@ -171,8 +171,7 @@ def sequence_coverage_ui():
         return
 
     data2 = st.session_state["data2"]
-
-    left_col, right_col = st.columns(2)
+    left_col, right_col = st.columns([1, 2])
 
     with left_col:
         species = st.selectbox("Select database", ["Mouse", "Human"])
@@ -186,7 +185,8 @@ def sequence_coverage_ui():
         chunk_size = st.number_input("Chunk size", min_value=10, max_value=500, value=100, step=10)
 
     if "db" not in st.session_state or st.session_state["db"] is None:
-        right_col.info("Load a database first")
+        with right_col:
+            st.info("Load a database first")
         return
 
     db = st.session_state["db"]
