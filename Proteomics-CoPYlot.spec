@@ -51,7 +51,12 @@ a = Analysis(
     'plotly.io',
     'plotly.subplots',
     'gprofiler',
-    'gprofiler.gprofiler'
+    'gprofiler.gprofiler',
+    'Bio',
+    'Bio.SeqIO',
+    'Bio.Alphabet',
+    'Bio.Data',
+    'Bio.Seq',
     ],
     hookspath=[],
     hooksconfig={},
