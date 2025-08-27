@@ -20,6 +20,7 @@ import sys
 import matplotlib.ticker as mtick
 from matplotlib.patches import Ellipse
 from scipy.stats import gaussian_kde
+from Bio import SeqIO
 
 
 #BASIC AND DATA FUNCTIONS
@@ -1895,6 +1896,96 @@ def missed_cleavage_plot(data2, meta, id=True, text=True, text_size=8, header=Tr
 
     plt.tight_layout()
     return fig
+
+
+@st.cache_data
+def calculate_coverage(data, db, protein):
+    peptides = data.loc[data["ProteinNames"] == protein, "Stripped.Sequence"].unique()
+    sequence_row = db.loc[db["name"] == protein, "V1"]
+    if sequence_row.empty:
+        raise ValueError(f"Protein {protein} not found in db.")
+    sequence = sequence_row.values[0]
+    coverage_mask = [0] * len(sequence)
+    for pep in peptides:
+        for match in re.finditer(re.escape(pep), sequence):
+            start, end = match.start(), match.end()
+            for i in range(start, end):
+                coverage_mask[i] = 1
+    return round((sum(coverage_mask) / len(sequence)) * 100, 2)
+
+
+@st.cache_data
+def vis_coverage(data: pd.DataFrame, db: pd.DataFrame, protein: str, chunk_size: int = 30) -> str:
+    data = data[data['ProteinNames'].str.contains(rf"\b{protein}\b", regex=True)]
+    found_seq = data['Stripped.Sequence'].unique()
+    sequence = db.loc[db['name'] == protein, 'V1'].values[0]
+    n = len(sequence)
+
+    result_seqs = ["-" * n]
+    for pep in found_seq:
+        for match in re.finditer(pep, sequence):
+            start_pos, end_pos = match.start(), match.end()
+            placed = False
+            for i, seq in enumerate(result_seqs):
+                if seq[start_pos:end_pos] == "-" * len(pep):
+                    result_seqs[i] = seq[:start_pos] + pep + seq[end_pos:]
+                    placed = True
+                    break
+            if not placed:
+                new_seq = "-" * n
+                new_seq = new_seq[:start_pos] + pep + new_seq[end_pos:]
+                result_seqs.append(new_seq)
+
+    num_seq = ""
+    count = 10
+    for i in range(1, n + 1):
+        if i % count == 0:
+            num_seq += " " * (10 - len(str(count))) + str(count)
+            count += 10
+
+    starts = range(0, n, 10)
+    chunks = [sequence[s:s + 10] for s in starts]
+    num_chunks = [num_seq[s:s + 10] for s in starts]
+
+    result_chunks_list = []
+    for res_seq in result_seqs:
+        result_chunks = [res_seq[s:s + 10] for s in starts]
+        result_chunks_list.append(" ".join(result_chunks))
+
+    sequence_str = " ".join(chunks)
+    num_seq_str = " ".join(num_chunks)
+
+    chunk_size = int(chunk_size * 1.1)
+    n2 = len(sequence_str)
+    starts = range(0, n2, chunk_size)
+
+    lines = [sequence_str[s:s + chunk_size] for s in starts]
+    num_lines = [num_seq_str[s:s + chunk_size] for s in starts]
+
+    result_lines_list = []
+    for res_chunk in result_chunks_list:
+        result_lines = [res_chunk[s:s + chunk_size] for s in starts]
+        result_lines_list.append(result_lines)
+
+    output_lines = []
+    for i in range(len(lines)):
+        output_lines.append(num_lines[i])
+        for res in reversed(result_lines_list):
+            output_lines.append(res[i])
+        output_lines.append(lines[i])
+        output_lines.append("")
+
+    return "\n".join(output_lines)
+
+
+@st.cache_data
+def fasta_to_dataframe(fasta_path):
+    records = list(SeqIO.parse(fasta_path, "fasta"))
+    data = {"full_header": [rec.id for rec in records], "V1": [str(rec.seq) for rec in records]}
+    df = pd.DataFrame(data)
+    df["name"] = df["full_header"].apply(lambda x: x.split("|")[-1])
+    df["accession"] = df["full_header"].apply(lambda x: x.split("|")[1] if "|" in x else x)
+    return df
 
 
 #SINGLE PROTEIN

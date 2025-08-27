@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.functions import rt_vs_pred_rt_plot, modification_plot, missed_cleavage_plot
+from utils.functions import rt_vs_pred_rt_plot, modification_plot, missed_cleavage_plot, calculate_coverage, vis_coverage, fasta_to_dataframe
 import io
 
 #MAIN
@@ -7,7 +7,8 @@ def peptide_level_ui():
     peptide_tabs = st.tabs([
         "RT Plot",
         "Modification Plot",
-        "Missed Cleavage Plot"
+        "Missed Cleavage Plot",
+        "Sequence Coverage"
     ])
 
     with peptide_tabs[0]:
@@ -16,6 +17,8 @@ def peptide_level_ui():
         modification_plot_ui()
     with peptide_tabs[2]:
         missed_cleavage_plot_ui()
+    with peptide_tabs[3]:
+        sequence_coverage_ui()
 
 #SUB
 def rt_plot_ui():
@@ -160,3 +163,36 @@ def missed_cleavage_plot_ui():
             )
         else:
             st.info("Both data and meta information are required for the Missed Cleavage Plot.")
+
+
+def sequence_coverage_ui():
+    if "data2" not in st.session_state:
+        st.warning("No data2 found in session state")
+        return
+
+    data2 = st.session_state["data2"]
+
+    left_col, right_col = st.columns(2)
+
+    with left_col:
+        species = st.selectbox("Select database", ["Mouse", "Human"])
+        if st.button("Load Database"):
+            if species == "Mouse":
+                st.session_state["db"] = fasta_to_dataframe("data/db/UP000000589_10090.fasta")
+            else:
+                st.session_state["db"] = fasta_to_dataframe("data/db/UP000005640_9606.fasta")
+
+        protein = st.selectbox("Select a protein", sorted(data2["ProteinNames"].unique()))
+        chunk_size = st.number_input("Chunk size", min_value=10, max_value=500, value=100, step=10)
+
+    if "db" not in st.session_state or st.session_state["db"] is None:
+        right_col.info("Load a database first")
+        return
+
+    db = st.session_state["db"]
+    coverage = calculate_coverage(data2, db, protein)
+
+    with right_col:
+        st.write(f"Coverage for {protein}: {coverage}%")
+        coverage_text = vis_coverage(data2, db, protein, chunk_size=chunk_size)
+        st.text(coverage_text)
