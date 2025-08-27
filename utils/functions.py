@@ -1900,30 +1900,45 @@ def missed_cleavage_plot(data2, meta, id=True, text=True, text_size=8, header=Tr
 
 @st.cache_data
 def calculate_coverage(data, db, protein):
-    peptides = data.loc[data["ProteinNames"] == protein, "Stripped.Sequence"].unique()
-    sequence_row = db.loc[db["name"] == protein, "V1"]
-    if sequence_row.empty:
-        raise ValueError(f"Protein {protein} not found in db.")
-    sequence = sequence_row.values[0]
+    peptides = data[data["ProteinNames"].str.contains(rf"\b{re.escape(protein)}\b", regex=True)][
+        "Stripped.Sequence"].unique()
+
+    try:
+        sequence_row = db.loc[db["name"] == protein, "V1"]
+        if sequence_row.empty:
+            raise KeyError
+        sequence = sequence_row.values[0]
+    except KeyError:
+        raise ValueError(f"No sequence found in the selected database for protein: {protein}")
+
     coverage_mask = [0] * len(sequence)
     for pep in peptides:
         for match in re.finditer(re.escape(pep), sequence):
             start, end = match.start(), match.end()
             for i in range(start, end):
                 coverage_mask[i] = 1
+
     return round((sum(coverage_mask) / len(sequence)) * 100, 2)
 
 
 @st.cache_data
 def vis_coverage(data: pd.DataFrame, db: pd.DataFrame, protein: str, chunk_size: int = 30) -> str:
-    data = data[data['ProteinNames'].str.contains(rf"\b{protein}\b", regex=True)]
+    data = data[data['ProteinNames'].str.contains(rf"\b{re.escape(protein)}\b", regex=True)]
     found_seq = data['Stripped.Sequence'].unique()
-    sequence = db.loc[db['name'] == protein, 'V1'].values[0]
-    n = len(sequence)
 
+    try:
+        sequence_row = db.loc[db['name'] == protein, 'V1']
+        if sequence_row.empty:
+            raise KeyError
+        sequence = sequence_row.values[0]
+    except KeyError:
+        return f"No sequence found in the selected database for protein: {protein}"
+
+    n = len(sequence)
     result_seqs = ["-" * n]
+
     for pep in found_seq:
-        for match in re.finditer(pep, sequence):
+        for match in re.finditer(re.escape(pep), sequence):
             start_pos, end_pos = match.start(), match.end()
             placed = False
             for i, seq in enumerate(result_seqs):

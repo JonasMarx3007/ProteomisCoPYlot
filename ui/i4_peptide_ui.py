@@ -170,7 +170,9 @@ def sequence_coverage_ui():
         st.warning("No data2 found in session state")
         return
 
-    data2 = st.session_state["data2"]
+    data2 = st.session_state["data2"].copy()
+    data2["first_protein"] = data2["ProteinNames"].str.split(";").str[0]
+
     left_col, right_col = st.columns([1, 2])
 
     with left_col:
@@ -181,7 +183,7 @@ def sequence_coverage_ui():
             else:
                 st.session_state["db"] = fasta_to_dataframe("data/db/UP000005640_9606.fasta")
 
-        protein = st.selectbox("Select a protein", sorted(data2["ProteinNames"].unique()))
+        protein = st.selectbox("Select a protein", sorted(data2["first_protein"].unique()))
         chunk_size = st.number_input("Chunk size", min_value=10, max_value=500, value=100, step=10)
 
     if "db" not in st.session_state or st.session_state["db"] is None:
@@ -190,9 +192,13 @@ def sequence_coverage_ui():
         return
 
     db = st.session_state["db"]
-    coverage = calculate_coverage(data2, db, protein)
 
     with right_col:
-        st.write(f"Coverage for {protein}: {coverage}%")
-        coverage_text = vis_coverage(data2, db, protein, chunk_size=chunk_size)
-        st.text(coverage_text)
+        try:
+            coverage = calculate_coverage(data2, db, protein)
+            coverage_text = vis_coverage(data2, db, protein, chunk_size=chunk_size)
+        except Exception:
+            st.write(f"The selected protein variant '{protein}' does not exist in the loaded database.")
+        else:
+            st.write(f"Coverage for {protein}: {coverage}%")
+            st.text(coverage_text)
